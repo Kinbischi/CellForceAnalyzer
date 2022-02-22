@@ -1,0 +1,14 @@
+CellForceAnalyzer/pastPics/
+bin/
+.vs/
+CellForceAnalyzer.sln
+CellForceAnalyzer/InputImages/
+CellForceAnalyzer/OutputImages/
+CellForceAnalyzer/YoloFiles/
+extLibs/
+CellForceAnalyzer/x64/
+CellForceAnalyzer/opencv_world454d.dll
+CellForceAnalyzer/opencv_world454.dll
+CellForceAnalyzer/CellForceAnalyzer.vcxproj.user
+CellForceAnalyzer/CellForceAnalyzer.vcxproj.filters
+CellForceAnalyzer/CellForceAnalyzer.vcxproj
