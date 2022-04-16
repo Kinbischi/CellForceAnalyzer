@@ -17,6 +17,7 @@ CustomImage::CustomImage(const CustomImage& other)
 	m_nucleusChannel = other.m_nucleusChannel.clone();
 	m_cytoplasmChannel = other.m_cytoplasmChannel.clone();
 	m_yapChannel = other.m_yapChannel.clone();
+	m_actinChannel = other.m_actinChannel.clone();
 }
 
 void CustomImage::setName(std::string str)
@@ -34,6 +35,7 @@ void CustomImage::setName(std::string str)
 		m_name = str;
 	}
 }
+
 string CustomImage::getName()
 {
 	return m_name;
@@ -51,10 +53,13 @@ string CustomImage::getName(channelType type)
 		name += "_nc";
 		break;
 	case channelType::cytoplasm:
-		name += "_cy";
+		name += "_cp";
 		break;
 	case channelType::yap:
 		name += "_yap";
+		break;
+	case channelType::actin:
+		name += "_actin";
 		break;
 	case channelType::None:
 		name += "_rgb";
@@ -65,16 +70,7 @@ string CustomImage::getName(channelType type)
 
 void CustomImage::setChannel(Mat img, channelType type)
 {
-	//scale image so that highest pixel is white and lowest is black
-	if (img.depth() == CV_8U)
-	{
-		cv::normalize(img, img, 0, max8bit, NORM_MINMAX, CV_8U);
-	}
-	if (img.depth() == CV_16U)
-	{
-		cv::normalize(img, img, 0, max16bit, NORM_MINMAX, CV_16U);
-	}
-	
+
 	switch (type)
 	{
 	case channelType::brightfield:
@@ -88,6 +84,9 @@ void CustomImage::setChannel(Mat img, channelType type)
 		break;
 	case channelType::yap:
 		m_yapChannel = img;
+		break;
+	case channelType::actin:
+		m_actinChannel = img;
 		break;
 	}
 }
@@ -109,6 +108,9 @@ Mat CustomImage::getChannel(channelType type)
 		break;
 	case channelType::yap:
 		img = m_yapChannel;
+		break;
+	case channelType::actin:
+		img = m_actinChannel;
 		break;
 	case channelType::None:
 		img = this->createRGBimage();
@@ -133,6 +135,7 @@ void CustomImage::threshold()
 	help::thresh(m_nucleusChannel);
 	help::thresh(m_cytoplasmChannel);
 	help::thresh(m_yapChannel);
+	help::thresh(m_actinChannel);
 }
 
 // Not used at the moment  => delete later??
@@ -152,15 +155,35 @@ CustomImage CustomImage::cutImageOut(const Rect& box,string inName)
 	Mat bfC = m_brightfieldChannel;
 	Mat nC = m_nucleusChannel;
 	Mat cC = m_cytoplasmChannel;
-	Mat ncC = m_yapChannel;
-	bfC = bfC(box).clone();
-	nC = nC(box).clone();
-	cC = cC(box).clone();
-	ncC = ncC(box).clone();
+	Mat yapC = m_yapChannel;
+	Mat acC = m_actinChannel;
+
+	if (!bfC.empty())
+	{
+		bfC = bfC(box).clone();
+	}
+	if (!nC.empty())
+	{
+		nC = nC(box).clone();
+	}
+	if (!cC.empty())
+	{
+		cC = cC(box).clone();
+	}
+	if (!yapC.empty())
+	{
+		yapC = yapC(box).clone();
+	}
+	if (!acC.empty())
+	{
+		acC = acC(box).clone();
+	}
+
 	boxImage.setChannel(bfC,channelType::brightfield);
 	boxImage.setChannel(nC, channelType::nucleus);
 	boxImage.setChannel(cC, channelType::cytoplasm);
-	boxImage.setChannel(ncC, channelType::yap);
+	boxImage.setChannel(yapC, channelType::yap);
+	boxImage.setChannel(acC, channelType::actin);
 	return boxImage;
 }
 

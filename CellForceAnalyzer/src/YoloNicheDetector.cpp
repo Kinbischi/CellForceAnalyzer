@@ -49,12 +49,19 @@ vector<Cell> YoloNicheDetector::detectCells(CustomImage arrayImage, Mat& arrayIm
 {
     confThreshold = confThresh;
     nmsThreshold = nmsThresh;
+    
+    Mat img = arrayImage.createRGBimage().clone();
 
-    Mat img = arrayImage.createRGBimage();
-    if (img.depth() == CV_16U)
+    help::scaleData(img);
+    
+    help::showWindow(img);
+
+    if (img.depth()==CV_16U)
     {
-        img.convertTo(img, CV_8U, 1 / 256.0);
+        img.convertTo(img, CV_8U, 1.0 / 256.0);
     }
+    
+    help::showWindow(img);
 
     Mat blob;
     Mat imgWithBoxes = img.clone();
@@ -68,6 +75,7 @@ vector<Cell> YoloNicheDetector::detectCells(CustomImage arrayImage, Mat& arrayIm
     // Remove the bounding boxes with low confidence
     vector<Rect> boxes = postprocess(imgWithBoxes, outs, m_classes);
     //TODO: WHY is there a box with negative x value??
+
 
     arrayImage_withYoloBoxes = imgWithBoxes;
 

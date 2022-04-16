@@ -16,10 +16,6 @@ public:
 
 	void thresholdImages(std::vector<CustomImage>&, std::vector<CustomImage>&, std::vector<CustomImage>&, std::vector<CustomImage>&);
 
-	bool analyseShape(cv::Mat&);
-	void analyseNucleusShape(Cell& cell);
-	void yapDistribution(Cell&);
-
 private:
 	YoloNicheDetector m_yolo;
 };

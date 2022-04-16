@@ -19,6 +19,44 @@ namespace help
         return s;
     }
 
+    void scaleData(Mat& image)
+    {
+        if (image.channels() == 3)
+        {
+            Mat bgr[3];
+            vector<Mat> allChannels;
+            split(image, bgr);
+            if (image.depth() == CV_8U)
+            {
+                for (int i = 0; i < 3; i++)
+                {
+                    cv::normalize(bgr[i], bgr[i], 0, 255, NORM_MINMAX, CV_8U);
+                    allChannels.push_back(bgr[i]);
+                }
+            }
+            if (image.depth() == CV_16U)
+            {
+                for (int i = 0; i < 3; i++)
+                {
+                    cv::normalize(bgr[i], bgr[i], 0, 65535, NORM_MINMAX, CV_16U);
+                    allChannels.push_back(bgr[i]);
+                }
+            }
+            cv::merge(allChannels, image);
+        }
+        else
+        {
+            if (image.depth() == CV_8U)
+            {
+                cv::normalize(image, image, 0, 255, NORM_MINMAX, CV_8U);
+            }
+            if (image.depth() == CV_16U)
+            {
+                cv::normalize(image, image, 0, 65535, NORM_MINMAX, CV_16U);
+            }
+        }
+    }
+
     void showWindow(const Mat& image, double scale, const string windowName)
     {
         double aspect_ratio = double(image.cols) / image.rows;

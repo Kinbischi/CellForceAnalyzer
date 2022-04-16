@@ -11,8 +11,7 @@ namespace help
     std::string& copiedDirectoryToNiceString(std::string&);
     void showWindow(const cv::Mat&, double = 1, const std::string = "Image");
     bool thresh(cv::Mat& img);
-
-
+    void scaleData(cv::Mat&);
 
 
     template <typename T>
@@ -28,6 +27,7 @@ namespace help
         return s;
     }
 
+    // only works with 8 bit 3D images (because of Vec3b)
     template <typename T>
     std::vector<std::map<T, int>> elementsMap(cv::Mat img)
     {

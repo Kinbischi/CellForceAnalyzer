@@ -53,7 +53,12 @@
          </item>
          <item>
           <property name="text">
-           <string>Nucleus and Cytoplasm</string>
+           <string>YAP</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Actin</string>
           </property>
          </item>
          <item>
@@ -102,7 +107,12 @@
          </item>
          <item>
           <property name="text">
-           <string>Nucleus and Cytoplasm</string>
+           <string>YAP</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Actin</string>
           </property>
          </item>
          <item>
@@ -129,7 +139,7 @@
           <bool>false</bool>
          </property>
          <property name="currentText">
-          <string>Nucleus and Cytoplasm</string>
+          <string>YAP</string>
          </property>
          <property name="currentIndex">
           <number>3</number>
@@ -151,7 +161,12 @@
          </item>
          <item>
           <property name="text">
-           <string>Nucleus and Cytoplasm</string>
+           <string>YAP</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Actin</string>
           </property>
          </item>
          <item>
@@ -177,6 +192,9 @@
          <property name="editable">
           <bool>false</bool>
          </property>
+         <property name="currentIndex">
+          <number>0</number>
+         </property>
          <item>
           <property name="text">
            <string>Brightfield</string>
@@ -194,7 +212,12 @@
          </item>
          <item>
           <property name="text">
-           <string>Nucleus and Cytoplasm</string>
+           <string>YAP</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Actin</string>
           </property>
          </item>
          <item>
@@ -220,8 +243,11 @@
          <property name="editable">
           <bool>false</bool>
          </property>
+         <property name="currentText">
+          <string>None</string>
+         </property>
          <property name="currentIndex">
-          <number>4</number>
+          <number>5</number>
          </property>
          <item>
           <property name="text">
@@ -240,7 +266,12 @@
          </item>
          <item>
           <property name="text">
-           <string>Nucleus and Cytoplasm</string>
+           <string>YAP</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Actin</string>
           </property>
          </item>
          <item>
