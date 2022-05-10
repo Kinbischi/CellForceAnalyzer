@@ -359,7 +359,11 @@
               </widget>
              </item>
              <item>
-              <widget class="QSpinBox" name="spinBox_showImage"/>
+              <widget class="QSpinBox" name="spinBox_showImage">
+               <property name="maximum">
+                <number>999</number>
+               </property>
+              </widget>
              </item>
             </layout>
            </item>
@@ -372,7 +376,7 @@
               </size>
              </property>
              <property name="currentText">
-              <string>Cytoplasm</string>
+              <string>Brightfield</string>
              </property>
              <item>
               <property name="text">
@@ -401,19 +405,9 @@
              </item>
              <item>
               <property name="text">
-               <string>Merged RGB (BF CP NC)</string>
+               <string>Merged RGB (BF AC NC)</string>
               </property>
              </item>
-            </widget>
-           </item>
-           <item>
-            <widget class="QCheckBox" name="checkBox_thresholded">
-             <property name="text">
-              <string>Thresholded</string>
-             </property>
-             <property name="checked">
-              <bool>false</bool>
-             </property>
             </widget>
            </item>
            <item>
@@ -476,14 +470,14 @@
             </widget>
            </item>
            <item>
-            <widget class="QCheckBox" name="checkBox_analysed">
+            <widget class="QRadioButton" name="radioButton">
              <property name="text">
-              <string>Roundness Analysis</string>
+              <string>Deleted Cells</string>
              </property>
             </widget>
            </item>
            <item>
-            <spacer name="horizontalSpacer_7">
+            <spacer name="horizontalSpacer_13">
              <property name="orientation">
               <enum>Qt::Horizontal</enum>
              </property>
@@ -496,6 +490,43 @@
             </spacer>
            </item>
           </layout>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <layout class="QHBoxLayout" name="horizontalLayout_16">
+         <property name="topMargin">
+          <number>10</number>
+         </property>
+         <item>
+          <widget class="QCheckBox" name="checkBox_analysed">
+           <property name="text">
+            <string>Roundness Analysis</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QCheckBox" name="checkBox_thresholded">
+           <property name="text">
+            <string>Thresholded</string>
+           </property>
+           <property name="checked">
+            <bool>false</bool>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <spacer name="horizontalSpacer_7">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>40</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
          </item>
         </layout>
        </item>
@@ -677,6 +708,11 @@
         <row>
          <property name="text">
           <string>Cell Images</string>
+         </property>
+        </row>
+        <row>
+         <property name="text">
+          <string>Removed Cells</string>
          </property>
         </row>
         <row>

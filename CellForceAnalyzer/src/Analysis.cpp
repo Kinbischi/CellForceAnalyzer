@@ -56,6 +56,7 @@ vector<Point> getLongestContour(vector<vector<Point> > contours)
     return maxContour;
 }
 
+// works with 8 bit images
 void getContourAndCentroidOfLargestWhiteRegion(Mat img, vector<vector<Point> > contours, vector<Point>& longestContour, Point& centroidLargest)
 {
     Mat labels, stats, centroids;
@@ -107,8 +108,9 @@ void getContourAndCentroidOfLargestWhiteRegion(Mat img, vector<vector<Point> > c
     //=>countourArea and CC_STAT_AREA give different results and can not be compared! 
 
     //=>small test to counter that (checks whether centroid is within the largest contour)
-    double isInContour = cv::pointPolygonTest(longestContour, centroidLargest, false);
-    assert(isInContour + 1);
+    // 
+    //double isInContour = cv::pointPolygonTest(longestContour, centroidLargest, false);
+    //assert(isInContour + 1);
 }
 
 // finds furthest distance between points of a contour
@@ -150,7 +152,7 @@ void Analysis::analyseNucleusShape(Cell& cell)
 
     vector<vector<Point> > contours;
     cv::findContours(img, contours, RETR_LIST, CHAIN_APPROX_NONE);
-
+    //if (contours.empty()) { return; }
     Point centroidLargest;
     vector<Point> longestContour;
     getContourAndCentroidOfLargestWhiteRegion(img, contours, longestContour, centroidLargest);
@@ -172,7 +174,6 @@ void Analysis::analyseNucleusShape(Cell& cell)
 }
 
 //get largest connected area only??
-//assert cells are good??
 
 double analyzePercentageInNucleus(Mat something, Mat nucleus)
 {
@@ -218,17 +219,20 @@ void Analysis::analyseYapInNucleus(Cell& cell)
     cell.yap_inNucleus = yapInNucleus;
 }
 
-void Analysis::removeBadCells(vector<Cell>& cells)
+vector<int> Analysis::removeBadCells(vector<Cell>& cells)
 {
-    // if most of the cytoplasm lies within the nuleus => cell was dead
+    vector<int> removedCells;
+    // if most of the actin lies within the nucleus => cell is dead
     for (int i = 0; i < cells.size(); i++)
     {
-        double cytoplasmInNucleusPercentage = analyzePercentageInNucleus(cells[i].m_cytoplasmChannel, cells[i].m_nucleusChannel);
-        if (cytoplasmInNucleusPercentage > 0.5) //TODO: generell zu klein gegenüber bild? => area zurück geben
+        double actinInNucleusPercentage = analyzePercentageInNucleus(cells[i].m_actinChannel, cells[i].m_nucleusChannel);
+        if (actinInNucleusPercentage > 0.5) //TODO: generell zu klein gegenüber bild? => area zurück geben
         {
+            removedCells.push_back(i);
             cells.erase(cells.begin() + i);
         }
     }
+    return removedCells;
 }
 
 vector<double> analyseAreaAndDensity(Mat channel)
@@ -271,7 +275,7 @@ void drawAxis(Mat& img, Point p, Point q, Scalar colour, const float scale = 0.2
     // Here we lengthen the arrow by a factor of scale
     q.x = (int)(p.x - scale * hypotenuse * cos(angle));
     q.y = (int)(p.y - scale * hypotenuse * sin(angle));
-    line(img, p, q, colour, 1); //LINE_AA
+    line(img, p, q, colour, 1);
     // create the arrow hooks
     p.x = (int)(q.x + 9 * cos(angle + CV_PI / 4));
     p.y = (int)(q.y + 9 * sin(angle + CV_PI / 4));
@@ -322,7 +326,7 @@ double getPCAorientation(const vector<Point>& pts, vector<Point>& resVec)
 
 void Analysis::analyseActin(Cell& cell)
 {
-    Mat actin = cell.m_cytoplasmChannel;
+    Mat actin = cell.m_actinChannel;
     Mat actinThresh = actin.clone();
     help::thresh(actinThresh);
 
@@ -332,6 +336,7 @@ void Analysis::analyseActin(Cell& cell)
 
     vector<vector<Point> > contours;
     cv::findContours(actinThresh, contours, RETR_LIST, CHAIN_APPROX_NONE);
+    if (contours.empty()) { return; }
     Point centroidLargest;
     vector<Point> longestContour;
     getContourAndCentroidOfLargestWhiteRegion(actinThresh, contours, longestContour, centroidLargest);
@@ -359,7 +364,7 @@ double average(vector<double> v)
 }
 
 //better name?
-double Analysis::findPointWithMostNeighbours(vector<double> input, double margin)
+double Analysis::findDataPointWithMostNeighbours(vector<double> input, double margin)
 {
     int i = 0;
     vector<double> neighboursCount(input.size());
@@ -399,7 +404,7 @@ bool Analysis::analyseShape(Mat& img)
 
     vector<vector<Point> > contours;
     cv::findContours(img, contours, RETR_LIST, CHAIN_APPROX_NONE);
-
+    if (contours.empty()) { return false; }
     Point centroidLargest;
     vector<Point> longestContour;
     getContourAndCentroidOfLargestWhiteRegion(img, contours, longestContour, centroidLargest);

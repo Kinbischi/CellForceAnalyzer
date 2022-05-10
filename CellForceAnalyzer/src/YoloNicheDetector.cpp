@@ -53,15 +53,11 @@ vector<Cell> YoloNicheDetector::detectCells(CustomImage arrayImage, Mat& arrayIm
     Mat img = arrayImage.createRGBimage().clone();
 
     help::scaleData(img);
-    
-    help::showWindow(img);
 
     if (img.depth()==CV_16U)
     {
         img.convertTo(img, CV_8U, 1.0 / 256.0);
     }
-    
-    help::showWindow(img);
 
     Mat blob;
     Mat imgWithBoxes = img.clone();
@@ -93,8 +89,9 @@ vector<Cell> YoloNicheDetector::detectCells(CustomImage arrayImage, Mat& arrayIm
             CustomImage c = arrayImage.cutImageOut(box,name);
             Cell cell(c);
             cells.push_back(cell);
+            i++;
         }
-        i++;
+        
     }
     return cells;
 }

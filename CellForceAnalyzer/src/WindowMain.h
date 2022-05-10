@@ -21,12 +21,14 @@ private slots:
     void on_pushButton_showImage_clicked();
     void on_pushButton_writeOut_clicked();
     void imageNumberChanged(int);
-    //void on_pushButton_test_clicked();
+    void radioButtonCellsChanged(bool);
+    void on_pushButton_test_clicked();
     void setCellTable(Cell cell);
 
 
 
 private:
+    bool getImageToShow(cv::Mat&, std::string&, double&);
 
     void writeAnalysedDataToFile();
 
@@ -46,6 +48,8 @@ private:
     std::vector<cv::Mat> m_arrayImages_withYoloBoxes;
 
     std::vector<Cell> m_cellImages;
+    std::vector<Cell> m_deletedCellImages;
+
     Cell m_averageAllCells;
 
     Preprocess m_preprocess;
@@ -74,3 +78,12 @@ private:
 //Otsu thresholding is influenced depending on whether or not the image was normalized
 
 //TODO: 255 oder max8bit??
+
+// TODO array image yolo überlauf abwenden!
+//TODO: neu laden alles vorher löschen?
+
+//TODO: do not show boxes where borders were passed
+
+
+// FAAAT TODO:
+// create try and catch or just fix that it fucks up!!

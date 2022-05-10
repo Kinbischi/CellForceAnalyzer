@@ -10,7 +10,7 @@ namespace help
 
     std::string& copiedDirectoryToNiceString(std::string&);
     void showWindow(const cv::Mat&, double = 1, const std::string = "Image");
-    bool thresh(cv::Mat& img);
+    bool thresh(cv::Mat&);
     void scaleData(cv::Mat&);
 
 

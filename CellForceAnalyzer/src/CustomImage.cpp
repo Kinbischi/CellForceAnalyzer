@@ -187,13 +187,13 @@ CustomImage CustomImage::cutImageOut(const Rect& box,string inName)
 	return boxImage;
 }
 
-// writes into RGB => R=brightfield, G=Cytoplasm, B=Nucleus
+// writes into RGB => R=brightfield, G=actin, B=nucleus
 Mat CustomImage::createRGBimage()
 {
 	Mat rgbImage, imgRed, imgGreen, imgBlue;
 	vector<Mat> allChannels;
 	imgRed = m_brightfieldChannel;
-	imgGreen = m_cytoplasmChannel;
+	imgGreen = m_actinChannel;
 	imgBlue = m_nucleusChannel;
 
 	allChannels.push_back(imgBlue);
