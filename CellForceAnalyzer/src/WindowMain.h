@@ -20,9 +20,13 @@ private slots:
     void on_pushButton_loadImages_clicked();
     void on_pushButton_showImage_clicked();
     void on_pushButton_writeOut_clicked();
-    void imageNumberChanged(int);
-    void radioButtonCellsChanged(bool);
     void on_pushButton_test_clicked();
+
+    void imageNumberChanged(int);
+    void radioButtonArraysChanged(bool);
+    void radioButtonCellsChanged(bool);
+    void radioButtonDeletedCellsChanged(bool);
+    
     void setCellTable(Cell cell);
 
 

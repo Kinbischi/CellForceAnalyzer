@@ -174,7 +174,8 @@ void Analysis::analyseNucleusShape(Cell& cell)
 }
 
 //get largest connected area only??
-
+// TODO change yap from only thresholded to also weighted with pixel values?
+//TODO: vielleicht eine gesamtzell definition welche vom actin, yap, nucleus das thresholding vereinigt?
 double analyzePercentageInNucleus(Mat something, Mat nucleus)
 {
 
@@ -219,20 +220,20 @@ void Analysis::analyseYapInNucleus(Cell& cell)
     cell.yap_inNucleus = yapInNucleus;
 }
 
-vector<int> Analysis::removeBadCells(vector<Cell>& cells)
+bool Analysis::isDeadCell(Cell cell)
 {
-    vector<int> removedCells;
     // if most of the actin lies within the nucleus => cell is dead
-    for (int i = 0; i < cells.size(); i++)
+    //TODO: generell zu klein gegenüber bild? => area zurück geben
+
+    double actinInNucleusPercentage = analyzePercentageInNucleus(cell.m_actinChannel, cell.m_nucleusChannel);
+    if (actinInNucleusPercentage > 0.5) 
     {
-        double actinInNucleusPercentage = analyzePercentageInNucleus(cells[i].m_actinChannel, cells[i].m_nucleusChannel);
-        if (actinInNucleusPercentage > 0.5) //TODO: generell zu klein gegenüber bild? => area zurück geben
-        {
-            removedCells.push_back(i);
-            cells.erase(cells.begin() + i);
-        }
+        return true;
     }
-    return removedCells;
+    else 
+    {
+        return false;
+    }
 }
 
 vector<double> analyseAreaAndDensity(Mat channel)
@@ -268,8 +269,42 @@ vector<double> analyseAreaAndDensity(Mat channel)
     return result;
 }
 
-void drawAxis(Mat& img, Point p, Point q, Scalar colour, const float scale = 0.2)
+void Analysis::drawAxis(Mat& img, Point p, Point q, Scalar colour, const float scale = 0.2)
 {
+
+    double angle = atan2((double)p.y - q.y, (double)p.x - q.x); // angle in radians
+    double hypotenuse = sqrt((double)(p.y - q.y) * (p.y - q.y) + (p.x - q.x) * (p.x - q.x));
+    // Here we lengthen the arrow by a factor of scale
+    q.x = (int)(p.x - scale * hypotenuse * cos(angle));
+    q.y = (int)(p.y - scale * hypotenuse * sin(angle));
+    line(img, p, q, colour, 1);
+    // create the arrow hooks
+    p.x = (int)(q.x + 9 * cos(angle + CV_PI / 4));
+    p.y = (int)(q.y + 9 * sin(angle + CV_PI / 4));
+    line(img, p, q, colour, 1);
+    p.x = (int)(q.x + 9 * cos(angle - CV_PI / 4));
+    p.y = (int)(q.y + 9 * sin(angle - CV_PI / 4));
+    line(img, p, q, colour, 1);
+}
+
+void Analysis::drawAxis2(Mat& img, Point p, vector<Point2d> eigen_vecs, vector<double> eigen_val, Scalar colour, int mode, const float scale)
+{
+    //p is the ctr
+    Point q;
+    if (mode == 1)
+    {
+        q = p + 0.02 * Point(static_cast<int>(eigen_vecs[0].x * eigen_val[0]), static_cast<int>(eigen_vecs[0].y * eigen_val[0]));
+    }
+    if (mode == 2)
+    {
+        double arrowLength = 10;
+        double rat = eigen_vecs[0].y / eigen_vecs[0].x;
+        double arrow_x = arrowLength / sqrt(1 + rat * rat);
+        double arrow_y = rat * arrow_x;
+        q = Point(p.x + arrow_x, p.y + arrow_y);
+    }
+    
+
     double angle = atan2((double)p.y - q.y, (double)p.x - q.x); // angle in radians
     double hypotenuse = sqrt((double)(p.y - q.y) * (p.y - q.y) + (p.x - q.x) * (p.x - q.x));
     // Here we lengthen the arrow by a factor of scale
@@ -286,8 +321,12 @@ void drawAxis(Mat& img, Point p, Point q, Scalar colour, const float scale = 0.2
 }
 
 //TODO: better not with contours but with all the points?
-double getPCAorientation(const vector<Point>& pts, vector<Point>& resVec)
+double Analysis::getPCAorientation(const vector<Point>& pts, vector<Point>& resVec)
 {
+    if (pts.size()<10)
+    {
+        return 0;
+    }
     // the pca analysis uses another input format for the contour data
     Mat data_pts = Mat(pts.size(), 2, CV_64F);
     for (int i = 0; i < data_pts.rows; i++)
@@ -323,6 +362,57 @@ double getPCAorientation(const vector<Point>& pts, vector<Point>& resVec)
     return angle;
 }
 
+bool Analysis::getPCAorientation2(const vector<Point>& pts, vector<Point2d>& eigen_vecs, vector<double>& eigen_val, Point& center)
+{
+    if (pts.size() < 10)
+    {
+        return false;
+    }
+
+    // the pca analysis uses another input format for the contour data
+    Mat data_pts = Mat(pts.size(), 2, CV_64F);
+    for (int i = 0; i < data_pts.rows; i++)
+    {
+        data_pts.at<double>(i, 0) = pts[i].x;
+        data_pts.at<double>(i, 1) = pts[i].y;
+    }
+
+    //Perform PCA analysis
+    PCA pca_analysis(data_pts, Mat(), PCA::DATA_AS_ROW);
+    //Store the center of the object
+    Point cntr = Point(static_cast<int>(pca_analysis.mean.at<double>(0, 0)), static_cast<int>(pca_analysis.mean.at<double>(0, 1)));
+
+    //Store the eigenvalues and eigenvectors
+    for (int i = 0; i < 2; i++)
+    {
+        eigen_vecs[i] = Point2d(pca_analysis.eigenvectors.at<double>(i, 0), pca_analysis.eigenvectors.at<double>(i, 1));
+        eigen_val[i] = pca_analysis.eigenvalues.at<double>(i);
+    }
+
+    center = cntr;
+    
+    double angle = atan2(eigen_vecs[0].y, eigen_vecs[0].x); // orientation in radians
+    angle = angle * (360 / (2 * CV_PI));
+
+    return true;
+}
+
+vector<Point> Analysis::getWhitePointsFromThresholdedImage(Mat img)
+{
+    vector<Point> pointCloud;
+    for (int i = 0; i < img.rows; i++)
+    {
+        for (int j = 0; j < img.cols; j++)
+        {
+            if (img.at<uchar>(i,j)==255)
+            {
+                Point p = Point(j, i);
+                pointCloud.push_back(p);
+            }
+        }
+    }
+    return pointCloud;
+}
 
 void Analysis::analyseActin(Cell& cell)
 {
@@ -351,6 +441,11 @@ void Analysis::analyseActin(Cell& cell)
 
 }
 
+//TODO: function that returns point coordinates of white spots
+//threshold image
+//then divide it into sub images
+//then pca on sub images
+
 double median(vector<double> v)
 {
     int n = v.size() / 2;
@@ -364,7 +459,7 @@ double average(vector<double> v)
 }
 
 //better name?
-double Analysis::findDataPointWithMostNeighbours(vector<double> input, double margin)
+double findDataPointWithMostNeighbours(vector<double> input, double margin)
 {
     int i = 0;
     vector<double> neighboursCount(input.size());
@@ -381,6 +476,7 @@ double Analysis::findDataPointWithMostNeighbours(vector<double> input, double ma
     }
 
     vector<double> results;
+
     double maxNeighbours = *max_element(neighboursCount.begin(), neighboursCount.end());
     for (int j = 0; j < neighboursCount.size(); j++)
     {
@@ -391,6 +487,38 @@ double Analysis::findDataPointWithMostNeighbours(vector<double> input, double ma
     }
 
     return median(results);
+}
+
+Cell Analysis::getAverageProperties(vector<Cell> cells)
+{
+    double summedNucleusArea = 0, summedNucleusCircularity = 0, summedNucleusRoundness = 0, summedActinArea = 0, summedActinDensity = 0,
+        summedActinMaxLength = 0, summedYapInNucleus = 0;
+    vector<double> actinPCAangles;
+    Cell averageAllCells;
+    for (auto cell : cells)
+    {
+        summedNucleusArea += cell.nucleus_area;
+        summedNucleusCircularity += cell.nucleus_circularity;
+        summedNucleusRoundness += cell.nucleus_roundness;
+
+        summedActinArea += cell.actin_area;
+        summedActinDensity += cell.actin_density;
+        summedActinMaxLength += cell.actin_maxLength;
+        actinPCAangles.push_back(cell.actin_PCAangle);
+
+        summedYapInNucleus += cell.yap_inNucleus;
+    }
+
+    averageAllCells.nucleus_area = summedNucleusArea / cells.size();
+    averageAllCells.nucleus_circularity = summedNucleusCircularity / cells.size();
+    averageAllCells.nucleus_roundness = summedNucleusRoundness / cells.size();
+    averageAllCells.actin_area = summedActinArea / cells.size();
+    averageAllCells.actin_density = summedActinDensity / cells.size();
+    averageAllCells.actin_maxLength = summedActinMaxLength / cells.size();
+    if (!actinPCAangles.empty()) { averageAllCells.actin_PCAangle = static_cast<int>(findDataPointWithMostNeighbours(actinPCAangles, 10)); }
+    averageAllCells.yap_inNucleus = summedYapInNucleus / cells.size();
+
+    return averageAllCells;
 }
 
 // function used for depiction in show image function, draws centroid, inner & outer radii,...
