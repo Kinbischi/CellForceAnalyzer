@@ -147,15 +147,15 @@ double findFurthestDistance(vector<Point> contour, vector<Point>& furthestPoints
 // fitEllipse() => approximates ellipse into shape and returns rectangle => could be better than inner/outer radii
 void Analysis::analyseNucleusShape(Cell& cell)
 {
-    Mat img = cell.m_nucleusChannel.clone();
-    help::thresh(img);
+    Mat nucleusThresh = cell.m_nucleusChannel;
+    help::thresh(nucleusThresh);
 
     vector<vector<Point> > contours;
-    cv::findContours(img, contours, RETR_LIST, CHAIN_APPROX_NONE);
+    cv::findContours(nucleusThresh, contours, RETR_LIST, CHAIN_APPROX_NONE);
     //if (contours.empty()) { return; }
     Point centroidLargest;
     vector<Point> longestContour;
-    getContourAndCentroidOfLargestWhiteRegion(img, contours, longestContour, centroidLargest);
+    getContourAndCentroidOfLargestWhiteRegion(nucleusThresh, contours, longestContour, centroidLargest);
 
     //circularity
     double perimeter = cv::arcLength(longestContour, true);
@@ -181,8 +181,27 @@ double analyzePercentageInNucleus(Mat something, Mat nucleus)
 
     something = something.clone();
     nucleus = nucleus.clone();
+    auto d = nucleus.depth();
+    auto d2 = something.depth();
+    Mat something2 = something.clone();
+
+    //auto m1 = help::elementsMap<ushort>(something);
+    //auto m2 = help::elementsMap<ushort>(nucleus);
+
     help::thresh(something);
     help::thresh(nucleus);
+    help::showWindow(something);
+    auto d3 = nucleus.depth();
+    
+    help::scaleData(something2);
+    help::thresh(something2);
+    //auto m5 = help::elementsMap<uchar>(something2);
+    help::showWindow(something2);
+    help::showWindow(something);
+
+    //auto m3 = help::elementsMap<uchar>(something);
+    //auto m4 = help::elementsMap<uchar>(nucleus);
+    
 
     int somethingInNucleusCount = 0;
     int somethingOutsideNucleusCount = 0;
@@ -238,7 +257,7 @@ bool Analysis::isDeadCell(Cell cell)
 
 vector<double> analyseAreaAndDensity(Mat channel)
 {
-    Mat channelThresh = channel.clone();
+    Mat channelThresh = channel;
     help::thresh(channelThresh);
     int pixelSum = 0;
     int numberOfPixels = 0;
@@ -269,65 +288,13 @@ vector<double> analyseAreaAndDensity(Mat channel)
     return result;
 }
 
-void Analysis::drawAxis(Mat& img, Point p, Point q, Scalar colour, const float scale = 0.2)
+bool Analysis::pointCloudPCA(const vector<Point>& pts, const int squareLength, vector<Point2d>& eigen_vecs)
 {
-
-    double angle = atan2((double)p.y - q.y, (double)p.x - q.x); // angle in radians
-    double hypotenuse = sqrt((double)(p.y - q.y) * (p.y - q.y) + (p.x - q.x) * (p.x - q.x));
-    // Here we lengthen the arrow by a factor of scale
-    q.x = (int)(p.x - scale * hypotenuse * cos(angle));
-    q.y = (int)(p.y - scale * hypotenuse * sin(angle));
-    line(img, p, q, colour, 1);
-    // create the arrow hooks
-    p.x = (int)(q.x + 9 * cos(angle + CV_PI / 4));
-    p.y = (int)(q.y + 9 * sin(angle + CV_PI / 4));
-    line(img, p, q, colour, 1);
-    p.x = (int)(q.x + 9 * cos(angle - CV_PI / 4));
-    p.y = (int)(q.y + 9 * sin(angle - CV_PI / 4));
-    line(img, p, q, colour, 1);
-}
-
-void Analysis::drawAxis2(Mat& img, Point p, vector<Point2d> eigen_vecs, vector<double> eigen_val, Scalar colour, int mode, const float scale)
-{
-    //p is the ctr
-    Point q;
-    if (mode == 1)
+    if (pts.size() < 3)
     {
-        q = p + 0.02 * Point(static_cast<int>(eigen_vecs[0].x * eigen_val[0]), static_cast<int>(eigen_vecs[0].y * eigen_val[0]));
+        return false;
     }
-    if (mode == 2)
-    {
-        double arrowLength = 10;
-        double rat = eigen_vecs[0].y / eigen_vecs[0].x;
-        double arrow_x = arrowLength / sqrt(1 + rat * rat);
-        double arrow_y = rat * arrow_x;
-        q = Point(p.x + arrow_x, p.y + arrow_y);
-    }
-    
-
-    double angle = atan2((double)p.y - q.y, (double)p.x - q.x); // angle in radians
-    double hypotenuse = sqrt((double)(p.y - q.y) * (p.y - q.y) + (p.x - q.x) * (p.x - q.x));
-    // Here we lengthen the arrow by a factor of scale
-    q.x = (int)(p.x - scale * hypotenuse * cos(angle));
-    q.y = (int)(p.y - scale * hypotenuse * sin(angle));
-    line(img, p, q, colour, 1);
-    // create the arrow hooks
-    p.x = (int)(q.x + 9 * cos(angle + CV_PI / 4));
-    p.y = (int)(q.y + 9 * sin(angle + CV_PI / 4));
-    line(img, p, q, colour, 1);
-    p.x = (int)(q.x + 9 * cos(angle - CV_PI / 4));
-    p.y = (int)(q.y + 9 * sin(angle - CV_PI / 4));
-    line(img, p, q, colour, 1);
-}
-
-//TODO: better not with contours but with all the points?
-double Analysis::getPCAorientation(const vector<Point>& pts, vector<Point>& resVec)
-{
-    if (pts.size()<10)
-    {
-        return 0;
-    }
-    // the pca analysis uses another input format for the contour data
+    // the pca analysis uses another input format for the data
     Mat data_pts = Mat(pts.size(), 2, CV_64F);
     for (int i = 0; i < data_pts.rows; i++)
     {
@@ -337,11 +304,9 @@ double Analysis::getPCAorientation(const vector<Point>& pts, vector<Point>& resV
 
     //Perform PCA analysis
     PCA pca_analysis(data_pts, Mat(), PCA::DATA_AS_ROW);
-    //Store the center of the object
-    Point cntr = Point(static_cast<int>(pca_analysis.mean.at<double>(0, 0)), static_cast<int>(pca_analysis.mean.at<double>(0, 1)));
+    // center = Point(static_cast<int>(pca_analysis.mean.at<double>(0, 0)), static_cast<int>(pca_analysis.mean.at<double>(0, 1)));
 
     //Store the eigenvalues and eigenvectors
-    vector<Point2d> eigen_vecs(2);
     vector<double> eigen_val(2);
     for (int i = 0; i < 2; i++)
     {
@@ -349,50 +314,15 @@ double Analysis::getPCAorientation(const vector<Point>& pts, vector<Point>& resV
         eigen_val[i] = pca_analysis.eigenvalues.at<double>(i);
     }
 
-    // to Draw the principal components
-    Point p1 = cntr + 0.02 * Point(static_cast<int>(eigen_vecs[0].x * eigen_val[0]), static_cast<int>(eigen_vecs[0].y * eigen_val[0]));
-    Point p2 = cntr - 0.02 * Point(static_cast<int>(eigen_vecs[1].x * eigen_val[1]), static_cast<int>(eigen_vecs[1].y * eigen_val[1]));
-
-    double angle = atan2(eigen_vecs[0].y, eigen_vecs[0].x); // orientation in radians
-
-    angle = angle * (360 / (2 * CV_PI));
-
-    resVec[0] = cntr;
-    resVec[1] = p1;
-    return angle;
-}
-
-bool Analysis::getPCAorientation2(const vector<Point>& pts, vector<Point2d>& eigen_vecs, vector<double>& eigen_val, Point& center)
-{
-    if (pts.size() < 10)
+    // for fiber analysis: analysis only worked if:
+    // - at least 10 percent of image need to be covered with fibers (white points)
+    // - in the analysis one principal component is clearly more dominant than the other => this can be seen via the eigenvalues
+    int subImgArea = squareLength * squareLength;
+    double ratio = eigen_val[0] / eigen_val[1];
+    if (pts.size() < 0.1 * subImgArea || ratio < 1.5)
     {
         return false;
     }
-
-    // the pca analysis uses another input format for the contour data
-    Mat data_pts = Mat(pts.size(), 2, CV_64F);
-    for (int i = 0; i < data_pts.rows; i++)
-    {
-        data_pts.at<double>(i, 0) = pts[i].x;
-        data_pts.at<double>(i, 1) = pts[i].y;
-    }
-
-    //Perform PCA analysis
-    PCA pca_analysis(data_pts, Mat(), PCA::DATA_AS_ROW);
-    //Store the center of the object
-    Point cntr = Point(static_cast<int>(pca_analysis.mean.at<double>(0, 0)), static_cast<int>(pca_analysis.mean.at<double>(0, 1)));
-
-    //Store the eigenvalues and eigenvectors
-    for (int i = 0; i < 2; i++)
-    {
-        eigen_vecs[i] = Point2d(pca_analysis.eigenvectors.at<double>(i, 0), pca_analysis.eigenvectors.at<double>(i, 1));
-        eigen_val[i] = pca_analysis.eigenvalues.at<double>(i);
-    }
-
-    center = cntr;
-    
-    double angle = atan2(eigen_vecs[0].y, eigen_vecs[0].x); // orientation in radians
-    angle = angle * (360 / (2 * CV_PI));
 
     return true;
 }
@@ -414,10 +344,67 @@ vector<Point> Analysis::getWhitePointsFromThresholdedImage(Mat img)
     return pointCloud;
 }
 
+double getAngleFromVectors(vector<Point2d> vectors)
+{
+    double angle = atan2(vectors[0].y, vectors[0].x); // orientation in radians
+    angle = angle * (360 / (2 * CV_PI));              // to degrees
+    angle = angle * (-1);                             // invert angle so that it is counterclock wise
+    if (angle < -25)                                  // angle goes from -25 deg to 155 deg => so that 0 and 90 deg are depicted well in plot
+    {
+        angle += 180;
+    }
+    return angle;
+}
+
+bool Analysis::analyseWithPCA(Mat& img, vector<double>& resultingAngles)
+{
+    int lengthX = 15; //length of mini-squares that are fed into the pca
+    int lengthY = 15;
+    
+    int edgeX = (img.cols % lengthX)/2;
+    int edgeY = (img.rows % lengthY)/2;
+    
+    Mat imgThresh = img;
+    bool successful = help::thresh(imgThresh);
+    if (!successful) { return false; }
+
+    help::scaleData(img);
+    if (img.depth() == CV_16U) { img.convertTo(img, CV_8U, 1 / 256.0); }
+    cv::cvtColor(img, img, COLOR_GRAY2RGB);
+
+    for (int i = 0; i < img.cols/lengthX; i++)
+    {
+        for (int j = 0; j < img.rows/lengthY; j++)
+        {
+            Rect rect(edgeX + i*lengthX, edgeY + j*lengthY, lengthX, lengthY);
+            Mat subImg = imgThresh(rect);
+
+            vector<Point> points = getWhitePointsFromThresholdedImage(subImg);
+            
+            vector<Point2d> eigen_vecs(2);
+            bool worked = pointCloudPCA(points, lengthX, eigen_vecs);
+
+            if (worked)
+            {
+                Point center = Point(edgeX + (i + 0.5) * lengthX, edgeY + (j + 0.5) * lengthY);
+                rectangle(img, rect, Scalar(0, 255, 128));
+                help::drawDoubleArrow(img, center, eigen_vecs, Scalar(0, 128, 255), lengthX);
+
+                double angle = getAngleFromVectors(eigen_vecs);
+                resultingAngles.push_back(angle);
+            }
+        }
+    }
+    if (resultingAngles.size() < 5) { return false; }
+    return true;
+}
+
+
+//TODO introduced worked
 void Analysis::analyseActin(Cell& cell)
 {
-    Mat actin = cell.m_actinChannel;
-    Mat actinThresh = actin.clone();
+    Mat actin = cell.m_actinChannel.clone();
+    Mat actinThresh = actin;
     help::thresh(actinThresh);
 
     vector<double> result = analyseAreaAndDensity(actin);
@@ -435,27 +422,15 @@ void Analysis::analyseActin(Cell& cell)
     double maxLength = findFurthestDistance(longestContour, furthestPoints);
     cell.actin_maxLength = maxLength;
 
-    vector<Point> resPCAaxis(2);
-    double angle = getPCAorientation(longestContour, resPCAaxis);
-    cell.actin_PCAangle = angle;
+    vector<Point> points = getWhitePointsFromThresholdedImage(actinThresh);
+    vector<Point2d> eigen_vecs(2);
+    bool worked = pointCloudPCA(points, actin.cols, eigen_vecs);
+    double mainAngle = getAngleFromVectors(eigen_vecs);
+    cell.actin_mainAngle = mainAngle;
 
-}
-
-//TODO: function that returns point coordinates of white spots
-//threshold image
-//then divide it into sub images
-//then pca on sub images
-
-double median(vector<double> v)
-{
-    int n = v.size() / 2;
-    nth_element(v.begin(), v.begin() + n, v.end());
-    return v[n];
-}
-
-double average(vector<double> v)
-{
-    return accumulate(v.begin(), v.end(), 0) / v.size();
+    vector<double> angles;
+    analyseWithPCA(actin, angles);
+    cell.actin_fibreAnglesPCA = angles;
 }
 
 //better name?
@@ -486,9 +461,10 @@ double findDataPointWithMostNeighbours(vector<double> input, double margin)
         }
     }
 
-    return median(results);
+    return help::median(results);
 }
 
+//TODO: get that out of here??
 Cell Analysis::getAverageProperties(vector<Cell> cells)
 {
     double summedNucleusArea = 0, summedNucleusCircularity = 0, summedNucleusRoundness = 0, summedActinArea = 0, summedActinDensity = 0,
@@ -504,7 +480,7 @@ Cell Analysis::getAverageProperties(vector<Cell> cells)
         summedActinArea += cell.actin_area;
         summedActinDensity += cell.actin_density;
         summedActinMaxLength += cell.actin_maxLength;
-        actinPCAangles.push_back(cell.actin_PCAangle);
+        actinPCAangles.push_back(cell.actin_mainAngle);
 
         summedYapInNucleus += cell.yap_inNucleus;
     }
@@ -515,7 +491,7 @@ Cell Analysis::getAverageProperties(vector<Cell> cells)
     averageAllCells.actin_area = summedActinArea / cells.size();
     averageAllCells.actin_density = summedActinDensity / cells.size();
     averageAllCells.actin_maxLength = summedActinMaxLength / cells.size();
-    if (!actinPCAangles.empty()) { averageAllCells.actin_PCAangle = static_cast<int>(findDataPointWithMostNeighbours(actinPCAangles, 10)); }
+    if (!actinPCAangles.empty()) { averageAllCells.actin_mainAngle = static_cast<int>(findDataPointWithMostNeighbours(actinPCAangles, 10)); }
     averageAllCells.yap_inNucleus = summedYapInNucleus / cells.size();
 
     return averageAllCells;
@@ -524,18 +500,16 @@ Cell Analysis::getAverageProperties(vector<Cell> cells)
 // function used for depiction in show image function, draws centroid, inner & outer radii,...
 bool Analysis::analyseShape(Mat& img)
 {
-    bool successful = help::thresh(img);
-    if (!successful)
-    {
-        return false;
-    }
+    Mat imgThresh = img;
+    bool successful = help::thresh(imgThresh);
+    if (!successful) { return false; }
 
     vector<vector<Point> > contours;
-    cv::findContours(img, contours, RETR_LIST, CHAIN_APPROX_NONE);
+    cv::findContours(imgThresh, contours, RETR_LIST, CHAIN_APPROX_NONE);
     if (contours.empty()) { return false; }
     Point centroidLargest;
     vector<Point> longestContour;
-    getContourAndCentroidOfLargestWhiteRegion(img, contours, longestContour, centroidLargest);
+    getContourAndCentroidOfLargestWhiteRegion(imgThresh, contours, longestContour, centroidLargest);
 
     vector<Point> radiusPoints(2);
     double innerRadius, outerRadius;
@@ -544,17 +518,21 @@ bool Analysis::analyseShape(Mat& img)
     vector<Point> furthestPoints;
     findFurthestDistance(longestContour, furthestPoints);
 
-    vector<Point> resPCAaxis(2);
-    getPCAorientation(longestContour, resPCAaxis);
+    vector<Point> points = getWhitePointsFromThresholdedImage(imgThresh);
+    vector<Point2d> eigen_vecs(2);
+    bool worked = pointCloudPCA(points, img.cols, eigen_vecs);
+    Point ctr = Point(img.cols / 2, img.rows / 2);
 
+    help::scaleData(img);
+    if (img.depth() == CV_16U) { img.convertTo(img, CV_8U, 1 / 256.0); }
     cv::cvtColor(img, img, COLOR_GRAY2RGB);
 
+    help::drawDoubleArrow(img, ctr, eigen_vecs, Scalar(0, 128, 255), img.cols);
     cv::drawContours(img, contours, -1, Scalar(0, 255, 0));
     cv::drawMarker(img, centroidLargest, Scalar(255, 0, 0), 0, 5);
     cv::drawMarker(img, radiusPoints[0], Scalar(0, 0, 255), 0, 5);
     cv::drawMarker(img, radiusPoints[1], Scalar(0, 0, 255), 0, 5);
     cv::line(img, furthestPoints[0], furthestPoints[1], Scalar(255, 255, 0));
-    drawAxis(img, resPCAaxis[0], resPCAaxis[1], Scalar(0, 128, 255), 1);
 
     return true;
 }

@@ -70,8 +70,6 @@ vector<Cell> YoloNicheDetector::detectCells(CustomImage arrayImage, Mat& arrayIm
 
     // Remove the bounding boxes with low confidence
     vector<Rect> boxes = postprocess(imgWithBoxes, outs, m_classes);
-    //TODO: WHY is there a box with negative x value??
-
 
     arrayImage_withYoloBoxes = imgWithBoxes;
 
@@ -83,15 +81,13 @@ vector<Cell> YoloNicheDetector::detectCells(CustomImage arrayImage, Mat& arrayIm
         int rows = arrayImage.m_brightfieldChannel.rows;
         int cols = arrayImage.m_brightfieldChannel.cols;
 
-        //TODO: double check that thats correct!
-        if (box.x > 0 && box.y < rows && box.x + box.width < cols && box.y - box.height>0)
+        if (box.x > 0 && box.y > 0 && box.x + box.width < cols && box.y + box.height < rows)
         {
             CustomImage c = arrayImage.cutImageOut(box,name);
             Cell cell(c);
             cells.push_back(cell);
             i++;
         }
-        
     }
     return cells;
 }

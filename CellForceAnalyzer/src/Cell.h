@@ -1,5 +1,8 @@
 #pragma once
 #include "CustomImage.h"
+
+enum class plotType { actFibers, nuclArea, nuclCircularity, nuclRoundness, yapInNucleus, actArea, actDensity, actMaxLength, actMainAngle};
+
 class Cell :
     public CustomImage
 {
@@ -7,17 +10,19 @@ public:
     Cell(CustomImage&);
     Cell() = default;
 
+    double getQuantity(plotType);
 
+    int nucleus_area;
     double nucleus_circularity;
     double nucleus_roundness;
-    int nucleus_area;
-
+    
     double yap_inNucleus; //in percent
-
-    double actin_density;
+    
     int actin_area;
+    double actin_density;
     double actin_maxLength;
-    double actin_PCAangle;
+    std::vector<double> actin_fibreAnglesPCA; // in degree from 0 to 180 counterclockwise (starting from the right/ x axis)
+    double actin_mainAngle;
 
 };
 

@@ -1,6 +1,8 @@
 #pragma once
 #include <string>
 #include <opencv2/core.hpp>
+#include <opencv2/highgui.hpp>
+#include <opencv2/imgproc.hpp>
 #include <set>
 #include <map>
 
@@ -9,11 +11,20 @@ namespace help
     const double M_PI = 3.14159265358979323846;
 
     std::string& copiedDirectoryToNiceString(std::string&);
-    void showWindow(const cv::Mat&, double = 1, const std::string = "Image");
     bool thresh(cv::Mat&);
     void scaleData(cv::Mat&);
+    double average(std::vector<double>);
+    double median(std::vector<double>);
+    
+    
+    // functions related to images
+    void showWindow(const cv::Mat&, double = 1, const std::string = "Image");
+    void drawArrow(cv::Mat&, cv::Point, cv::Point, cv::Scalar, const float scale = 0.2);
+    void drawDoubleArrow(cv::Mat&, cv::Point, std::vector<cv::Point2d>, cv::Scalar, double);
 
+    // the following are template functions that go into the header
 
+    // function to determine what pixel values are present in an image
     template <typename T>
     std::set<T> elements(cv::Mat im)
     {
@@ -27,12 +38,17 @@ namespace help
         return s;
     }
 
-    // only works with 8 bit 3D images (because of Vec3b)
+    // function to determine how often a pixel value is present in an image
+    // does not work with 16 bit 3D images (because of Vec3b)
     template <typename T>
     std::vector<std::map<T, int>> elementsMap(cv::Mat img)
     {
         std::map<T, int> itemsCountR, itemsCountG, itemsCountB;
         std::vector<std::map<T, int>> allChannels;
+        if (img.depth() != CV_8U)
+        {
+            return allChannels;
+        }
 
         if (img.channels() == 1)
         {
@@ -72,6 +88,4 @@ namespace help
 
         return allChannels;
     }
-    
-
 }

@@ -20,6 +20,7 @@ private slots:
     void on_pushButton_loadImages_clicked();
     void on_pushButton_showImage_clicked();
     void on_pushButton_writeOut_clicked();
+    void on_pushButton_showPlot_clicked();
     void on_pushButton_test_clicked();
 
     void imageNumberChanged(int);
@@ -88,6 +89,20 @@ private:
 
 //TODO: do not show boxes where borders were passed
 
+//TODO: create experiment class => so that every time images with different niches are loaded => an experiment block is loaded
 
-// FAAAT TODO:
-// create try and catch or just fix that it fucks up!!
+//TODO: why crash when previous plot not closed?
+// why no titles possible in plots
+
+//TODO: when should you clone? e.g. before every thresholding?
+// 
+// 
+// 
+//TODO check deleted cells from hannah data set 
+//is everything working?
+//Why tf are the images not stored in order in which they are loaded??
+//Cells are kept where actin is completely detached from nucleus!!?? wtf get that out
+
+//why is hannahs good looking cell twice detected but once deleted => in yolo procedure???
+
+//TODO absturz abfangen bei show img falls 0 cells
