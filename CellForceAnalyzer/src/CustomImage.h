@@ -5,8 +5,8 @@
 #include <map>
 
 // important enum
-// In the showing function: None is used as a placeholder for the color image output (brightfield, cytoplasm and nucleus into RGB)
-enum class channelType{brightfield, nucleus, cytoplasm, yap, actin, None};
+// In the showing function: None is used as a placeholder for the color image output (brightfield, vinculin and nucleus into RGB)
+enum class channelType{brightfield, nucleus, vinculin, yap, actin, None};
 
 class CustomImage
 {
@@ -37,7 +37,7 @@ public:
 
 	cv::Mat m_brightfieldChannel;
 	cv::Mat m_nucleusChannel;
-	cv::Mat m_cytoplasmChannel;
+	cv::Mat m_vinculinChannel;
 	cv::Mat m_yapChannel;
 	cv::Mat m_actinChannel;
 

@@ -141,118 +141,61 @@ double findFurthestDistance(vector<Point> contour, vector<Point>& furthestPoints
     return maxDistance;
 }
 
-// function used to get circularity and roundness for every cell
-
-// TODO:
-// fitEllipse() => approximates ellipse into shape and returns rectangle => could be better than inner/outer radii
-void Analysis::analyseNucleusShape(Cell& cell)
-{
-    Mat nucleusThresh = cell.m_nucleusChannel;
-    help::thresh(nucleusThresh);
-
-    vector<vector<Point> > contours;
-    cv::findContours(nucleusThresh, contours, RETR_LIST, CHAIN_APPROX_NONE);
-    //if (contours.empty()) { return; }
-    Point centroidLargest;
-    vector<Point> longestContour;
-    getContourAndCentroidOfLargestWhiteRegion(nucleusThresh, contours, longestContour, centroidLargest);
-
-    //circularity
-    double perimeter = cv::arcLength(longestContour, true);
-    double area = cv::contourArea(longestContour); // area inside contour
-    double circularity = 4 * help::M_PI * area / (perimeter * perimeter);
-
-    //roundness
-    vector<Point> radiusPoints(2);
-    double innerRadius, outerRadius;
-    getRadii(longestContour, centroidLargest, radiusPoints, innerRadius, outerRadius);
-    double roundness = innerRadius / outerRadius;
-
-    cell.nucleus_circularity = circularity;
-    cell.nucleus_roundness = roundness;
-    cell.nucleus_area = area;
-}
-
-//get largest connected area only??
-// TODO change yap from only thresholded to also weighted with pixel values?
-//TODO: vielleicht eine gesamtzell definition welche vom actin, yap, nucleus das thresholding vereinigt?
 double analyzePercentageInNucleus(Mat something, Mat nucleus)
 {
-
-    something = something.clone();
-    nucleus = nucleus.clone();
-    auto d = nucleus.depth();
-    auto d2 = something.depth();
-    Mat something2 = something.clone();
-
-    //auto m1 = help::elementsMap<ushort>(something);
-    //auto m2 = help::elementsMap<ushort>(nucleus);
-
-    help::thresh(something);
-    help::thresh(nucleus);
-    help::showWindow(something);
-    auto d3 = nucleus.depth();
-    
-    help::scaleData(something2);
-    help::thresh(something2);
-    //auto m5 = help::elementsMap<uchar>(something2);
-    help::showWindow(something2);
-    help::showWindow(something);
-
-    //auto m3 = help::elementsMap<uchar>(something);
-    //auto m4 = help::elementsMap<uchar>(nucleus);
-    
+    Mat somethingThresh = something;
+    Mat nucleusThresh = nucleus;
+    help::thresh(somethingThresh);
+    help::thresh(nucleusThresh);
 
     int somethingInNucleusCount = 0;
     int somethingOutsideNucleusCount = 0;
     int somethingArea = 0;
-    for (int i = 0; i < something.rows; i++)
+    double somethingInNucleusIntensity = 0;
+    double somethingOutsideNucleusIntensity = 0;
+    for (int i = 0; i < somethingThresh.rows; i++)
     {
-        for (int j = 0; j < something.cols; j++)
+        for (int j = 0; j < somethingThresh.cols; j++)
         {
-            uchar n = nucleus.at<uchar>(i, j);
-            uchar s = something.at<uchar>(i, j);
+            uchar nThresh = nucleusThresh.at<uchar>(i, j);
+            uchar sThresh = somethingThresh.at<uchar>(i, j);
 
-            if (s == CustomImage::max8bit)
+            int sValue;
+            if (something.depth() == CV_8U)
+            {
+                sValue = something.at<uchar>(i, j);
+            }
+            if (something.depth() == CV_16U)
+            {
+                sValue = something.at<ushort>(i, j);
+            }
+
+            if (sThresh == CustomImage::max8bit)
             {
                 somethingArea++;
-                if (n == CustomImage::max8bit)
+                if (nThresh == CustomImage::max8bit)
                 {
                     somethingInNucleusCount++;
+                    somethingInNucleusIntensity += sValue;
                 }
-                if (n == 0)
+                if (nThresh == 0)
                 {
                     somethingOutsideNucleusCount++;
+                    somethingOutsideNucleusIntensity += sValue;
                 }
             }
         }
     }
 
+    //intensity based calculation
+    double percentageIntensityInNucleus = somethingInNucleusIntensity / (somethingInNucleusIntensity + somethingOutsideNucleusIntensity);
+    double percentageIntensityOutsideNucleus = somethingOutsideNucleusIntensity / (somethingInNucleusIntensity + somethingOutsideNucleusIntensity);
+
+    //pixel wise calculation
     double percentageOfSomethingInNucleus = double(somethingInNucleusCount) / somethingArea;
     double percentageOfSomethingOutsideNucleus = double(somethingOutsideNucleusCount) / somethingArea;
-    return percentageOfSomethingInNucleus;
-}
 
-void Analysis::analyseYapInNucleus(Cell& cell)
-{
-    double yapInNucleus = analyzePercentageInNucleus(cell.m_yapChannel, cell.m_nucleusChannel);
-    cell.yap_inNucleus = yapInNucleus;
-}
-
-bool Analysis::isDeadCell(Cell cell)
-{
-    // if most of the actin lies within the nucleus => cell is dead
-    //TODO: generell zu klein gegenüber bild? => area zurück geben
-
-    double actinInNucleusPercentage = analyzePercentageInNucleus(cell.m_actinChannel, cell.m_nucleusChannel);
-    if (actinInNucleusPercentage > 0.5) 
-    {
-        return true;
-    }
-    else 
-    {
-        return false;
-    }
+    return percentageIntensityInNucleus;
 }
 
 vector<double> analyseAreaAndDensity(Mat channel)
@@ -288,9 +231,9 @@ vector<double> analyseAreaAndDensity(Mat channel)
     return result;
 }
 
-bool Analysis::pointCloudPCA(const vector<Point>& pts, const int squareLength, vector<Point2d>& eigen_vecs)
+bool Analysis::pointCloudPCA(const vector<Point>& pts, const int squareLength, vector<Point2d>& eigen_vecs, double minEigVecRatio)
 {
-    if (pts.size() < 3)
+    if (pts.size() < squareLength*squareLength*15)// old 3
     {
         return false;
     }
@@ -319,7 +262,7 @@ bool Analysis::pointCloudPCA(const vector<Point>& pts, const int squareLength, v
     // - in the analysis one principal component is clearly more dominant than the other => this can be seen via the eigenvalues
     int subImgArea = squareLength * squareLength;
     double ratio = eigen_val[0] / eigen_val[1];
-    if (pts.size() < 0.1 * subImgArea || ratio < 1.5)
+    if (ratio < minEigVecRatio) //pts.size() < 0.1 * subImgArea
     {
         return false;
     }
@@ -356,17 +299,39 @@ double getAngleFromVectors(vector<Point2d> vectors)
     return angle;
 }
 
-bool Analysis::analyseWithPCA(Mat& img, vector<double>& resultingAngles)
+vector<Point> Analysis::getPointsDependingOnIntensityFromImage(Mat img)
 {
-    int lengthX = 15; //length of mini-squares that are fed into the pca
-    int lengthY = 15;
+    vector<Point> pointCloud;
+    for (int i = 0; i < img.rows; i++)
+    {
+        for (int j = 0; j < img.cols; j++)
+        {
+            int pixelIntensity = img.at<uchar>(i, j);
+            for (int k = 0; k < pixelIntensity; k++)
+            {
+                Point p = Point(j, i);
+                pointCloud.push_back(p);
+            }
+        }
+    }
+    return pointCloud;
+}
+
+
+bool Analysis::analyseWithPCA(Mat& img, vector<double>& resultingAngles, int squareLength, double minEigVecRatio, Mat imgThresh)
+{
+    int lengthX = squareLength; //length of mini-squares that are fed into the pca
+    int lengthY = squareLength;
     
     int edgeX = (img.cols % lengthX)/2;
     int edgeY = (img.rows % lengthY)/2;
     
-    Mat imgThresh = img;
-    bool successful = help::thresh(imgThresh);
-    if (!successful) { return false; }
+    if (imgThresh.empty()) // if no thresholded image is given => usual otsu thresholding is applied
+    {
+        imgThresh = img;
+        bool successful = help::thresh(imgThresh);
+        if (!successful) { return false; }
+    }
 
     help::scaleData(img);
     if (img.depth() == CV_16U) { img.convertTo(img, CV_8U, 1 / 256.0); }
@@ -377,12 +342,13 @@ bool Analysis::analyseWithPCA(Mat& img, vector<double>& resultingAngles)
         for (int j = 0; j < img.rows/lengthY; j++)
         {
             Rect rect(edgeX + i*lengthX, edgeY + j*lengthY, lengthX, lengthY);
-            Mat subImg = imgThresh(rect);
-
-            vector<Point> points = getWhitePointsFromThresholdedImage(subImg);
+            Mat subImg = img(rect);
+            //Mat subImg = imgThresh(rect);
+            //vector<Point> points = getWhitePointsFromThresholdedImage(subImg);
+            vector<Point> points = getPointsDependingOnIntensityFromImage(subImg);
             
             vector<Point2d> eigen_vecs(2);
-            bool worked = pointCloudPCA(points, lengthX, eigen_vecs);
+            bool worked = pointCloudPCA(points, lengthX, eigen_vecs, minEigVecRatio);
 
             if (worked)
             {
@@ -399,7 +365,36 @@ bool Analysis::analyseWithPCA(Mat& img, vector<double>& resultingAngles)
     return true;
 }
 
+int Analysis::getOptimalThresholdingForPCA(Mat inImg, int squareLength, double minEigVecRatio)
+{
+    int maxArrowsCount = 0;
+    int optimalThresholding;
 
+    if (inImg.channels() == 3) { return 0; }
+    inImg = inImg.clone();
+    // scaled ONCE because thresholdings will be applied later
+    help::scaleData(inImg);
+    if (inImg.depth() == CV_16U) { inImg.convertTo(inImg, CV_8U, 1 / 256.0); }
+
+    for (int i = 10; i < 256; i += 5) //heavy function => thresholds a lot of times!!
+    {
+        Mat img = inImg.clone();
+        Mat imgThresh;
+        cv::threshold(img, imgThresh, i, 255, THRESH_BINARY);
+        vector<double> angles;
+        analyseWithPCA(img, angles, squareLength, minEigVecRatio, imgThresh);
+
+        int arrowsCount = angles.size();
+        if (arrowsCount > maxArrowsCount)
+        {
+            maxArrowsCount = arrowsCount;
+            optimalThresholding = i;
+        }
+    }
+    return optimalThresholding;
+}
+
+// falls altered => cell info müsste als resultVector zurück gebeben
 //TODO introduced worked
 void Analysis::analyseActin(Cell& cell)
 {
@@ -433,71 +428,8 @@ void Analysis::analyseActin(Cell& cell)
     cell.actin_fibreAnglesPCA = angles;
 }
 
-//better name?
-double findDataPointWithMostNeighbours(vector<double> input, double margin)
-{
-    int i = 0;
-    vector<double> neighboursCount(input.size());
-    for (auto elem : input)
-    {
-        for (auto neighbour : input)
-        {
-            if (neighbour<elem + margin && neighbour>elem - margin)
-            {
-                neighboursCount[i]++;
-            }
-        }
-        i++;
-    }
-
-    vector<double> results;
-
-    double maxNeighbours = *max_element(neighboursCount.begin(), neighboursCount.end());
-    for (int j = 0; j < neighboursCount.size(); j++)
-    {
-        if (neighboursCount[j] == maxNeighbours)
-        {
-            results.push_back(input[j]);
-        }
-    }
-
-    return help::median(results);
-}
-
-//TODO: get that out of here??
-Cell Analysis::getAverageProperties(vector<Cell> cells)
-{
-    double summedNucleusArea = 0, summedNucleusCircularity = 0, summedNucleusRoundness = 0, summedActinArea = 0, summedActinDensity = 0,
-        summedActinMaxLength = 0, summedYapInNucleus = 0;
-    vector<double> actinPCAangles;
-    Cell averageAllCells;
-    for (auto cell : cells)
-    {
-        summedNucleusArea += cell.nucleus_area;
-        summedNucleusCircularity += cell.nucleus_circularity;
-        summedNucleusRoundness += cell.nucleus_roundness;
-
-        summedActinArea += cell.actin_area;
-        summedActinDensity += cell.actin_density;
-        summedActinMaxLength += cell.actin_maxLength;
-        actinPCAangles.push_back(cell.actin_mainAngle);
-
-        summedYapInNucleus += cell.yap_inNucleus;
-    }
-
-    averageAllCells.nucleus_area = summedNucleusArea / cells.size();
-    averageAllCells.nucleus_circularity = summedNucleusCircularity / cells.size();
-    averageAllCells.nucleus_roundness = summedNucleusRoundness / cells.size();
-    averageAllCells.actin_area = summedActinArea / cells.size();
-    averageAllCells.actin_density = summedActinDensity / cells.size();
-    averageAllCells.actin_maxLength = summedActinMaxLength / cells.size();
-    if (!actinPCAangles.empty()) { averageAllCells.actin_mainAngle = static_cast<int>(findDataPointWithMostNeighbours(actinPCAangles, 10)); }
-    averageAllCells.yap_inNucleus = summedYapInNucleus / cells.size();
-
-    return averageAllCells;
-}
-
 // function used for depiction in show image function, draws centroid, inner & outer radii,...
+// not very beautiful but does the job
 bool Analysis::analyseShape(Mat& img)
 {
     Mat imgThresh = img;
@@ -527,12 +459,110 @@ bool Analysis::analyseShape(Mat& img)
     if (img.depth() == CV_16U) { img.convertTo(img, CV_8U, 1 / 256.0); }
     cv::cvtColor(img, img, COLOR_GRAY2RGB);
 
+    //TODO arrows in red??
     help::drawDoubleArrow(img, ctr, eigen_vecs, Scalar(0, 128, 255), img.cols);
-    cv::drawContours(img, contours, -1, Scalar(0, 255, 0));
-    cv::drawMarker(img, centroidLargest, Scalar(255, 0, 0), 0, 5);
-    cv::drawMarker(img, radiusPoints[0], Scalar(0, 0, 255), 0, 5);
-    cv::drawMarker(img, radiusPoints[1], Scalar(0, 0, 255), 0, 5);
-    cv::line(img, furthestPoints[0], furthestPoints[1], Scalar(255, 255, 0));
+    //cv::drawContours(img, contours, -1, Scalar(0, 255, 0));
+    //cv::drawMarker(img, centroidLargest, Scalar(255, 0, 0), 0, 5);
+    //cv::drawMarker(img, radiusPoints[0], Scalar(0, 0, 255), 0, 5);
+    //cv::drawMarker(img, radiusPoints[1], Scalar(0, 0, 255), 0, 5);
+    //cv::line(img, furthestPoints[0], furthestPoints[1], Scalar(255, 255, 0));
 
     return true;
 }
+
+
+// TODO: fitEllipse() => approximates ellipse into shape and returns rectangle => could be better than inner/outer radii
+// 
+// function used to get circularity and roundness for every cell
+void Analysis::analyseNucleus(Cell& cell)
+{
+    Mat nucleusThresh = cell.m_nucleusChannel;
+    help::thresh(nucleusThresh);
+
+    vector<vector<Point> > contours;
+    cv::findContours(nucleusThresh, contours, RETR_LIST, CHAIN_APPROX_NONE);
+    //if (contours.empty()) { return; }
+    Point centroidLargest;
+    vector<Point> longestContour;
+    getContourAndCentroidOfLargestWhiteRegion(nucleusThresh, contours, longestContour, centroidLargest);
+
+    //circularity
+    double perimeter = cv::arcLength(longestContour, true);
+    double area = cv::contourArea(longestContour); // area inside contour
+    double circularity = 4 * help::M_PI * area / (perimeter * perimeter);
+
+    //roundness
+    vector<Point> radiusPoints(2);
+    double innerRadius, outerRadius;
+    getRadii(longestContour, centroidLargest, radiusPoints, innerRadius, outerRadius);
+    double roundness = innerRadius / outerRadius;
+
+    cell.nucleus_circularity = circularity;
+    cell.nucleus_roundness = roundness;
+    cell.nucleus_area = area;
+}
+
+void Analysis::analyseYap(Cell& cell)
+{
+    double yapInNucleus = analyzePercentageInNucleus(cell.m_yapChannel, cell.m_nucleusChannel);
+    cell.yap_inNucleus = yapInNucleus;
+}
+
+
+// TODO: wenn fixed (e.g.x20) => regulate nucleus size => between x and y pixels
+// actin detatched from nucleus?
+bool Analysis::isDeadCell(Cell cell)
+{
+    // 1)
+    // triggers if most of the actin lies within the nucleus
+    // or nucleus is huge => perhaps 2 molten nucli together
+    double actinInNucleusPercentage = analyzePercentageInNucleus(cell.m_actinChannel, cell.m_nucleusChannel);
+    if (actinInNucleusPercentage > 0.4)
+    {
+        return true;
+    }
+    // actin area should be bigger than nucleus area
+    vector<double> result;
+    result = analyseAreaAndDensity(cell.m_actinChannel);
+    double actin_area = result[0];
+    result = analyseAreaAndDensity(cell.m_nucleusChannel);
+    double nucleus_area = result[0];
+    auto hi = actin_area / nucleus_area;
+    if (actin_area / nucleus_area < 2)
+    {
+        return true;
+    }
+    
+
+    // 2)
+    // if thresholding of nucleus has multiple areas => multiple cells in niche or very very blurred nucleus
+    // spots are with small area are not considered
+    Mat nucleusThresh = cell.m_nucleusChannel;
+    help::thresh(nucleusThresh);
+    Mat labels, stats, centroids;
+    int nucleusParts = cv::connectedComponentsWithStats(nucleusThresh, labels, stats, centroids);
+
+    if (nucleusParts == 1) // no nucleus, only background
+    {
+        return true;
+    }
+    if (nucleusParts!=2) // more than background and nucleus
+    {
+        int bigNucleusParts = 0;
+        for (int i = 1; i < nucleusParts; i++) // 0 not used => background label
+        {
+            int area = stats.at<int>(i, CC_STAT_AREA);
+            if (area > 10)
+            {
+                bigNucleusParts++;
+            }
+        }
+        if (bigNucleusParts>1)
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+

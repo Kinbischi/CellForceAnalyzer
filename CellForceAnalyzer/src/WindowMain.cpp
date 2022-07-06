@@ -186,68 +186,80 @@ void plotDistribution(vector<Cell> cells, int type)
         y.push_back(cells[i].nucleus_area);
     }
 }
-    
-void WindowMain::on_pushButton_test_clicked()
+
+void WindowMain::loadNiceCellImages()
 {
-    /*
-    Mat img = imread(m_inpDir + "50x50_niches_RGD_3mM_2022_02_22__14_11_14_Maximum intensity projection_Filter.tif", IMREAD_UNCHANGED);
-    Rect r(220, 400, 300, 300);
-    std::vector<channelType> channelsOrder;
-    channelsOrder.push_back(channelType::nucleus);
-    channelsOrder.push_back(channelType::actin);
-    channelsOrder.push_back(channelType::brightfield);
-    */
-    Mat img = imread(m_inpDir + "300321_PEGvsGELMAlif.lif - Image006-1 (RGB).tif", IMREAD_UNCHANGED);
-    Rect r(1000, 1180, 500, 500);
-    //rectangle(img,r, Scalar(128, 255, 0));
-    //help::showWindow(img,0.5);
+    vector<string> imageNames;
+    vector<vector<Rect>> rectangles;
+    vector<vector<channelType>> channels;
+
+    //Oksana's cell
+    vector<channelType> channelsOrder1;
+    channelsOrder1.push_back(channelType::nucleus);
+    channelsOrder1.push_back(channelType::actin);
+    channelsOrder1.push_back(channelType::brightfield);
+
+    imageNames.push_back("50x50_niches_RGD_3mM_2022_02_22__14_11_14_Maximum intensity projection_Filter.tif");
+    vector<Rect> rVec;
+    rVec.push_back(Rect(220, 400, 300, 300));
+    rectangles.push_back(rVec);
+    rVec.clear();
+    channels.push_back(channelsOrder1);
+
+    //Leslie's cells
+    vector<channelType> channelsOrder2;
+    channelsOrder2.push_back(channelType::nucleus);
+    channelsOrder2.push_back(channelType::brightfield);
+    channelsOrder2.push_back(channelType::actin);
+
+    imageNames.push_back("300321_PEGvsGELMAlif.lif - Image006-1 (RGB).tif");
+    rVec.push_back(Rect(1000, 1180, 500, 500));
+    rVec.push_back(Rect(140, 1180, 340, 340));
+    rVec.push_back(Rect(1250, 200, 750, 250));
+    rVec.push_back(Rect(880, 1630, 350, 250));
+    rectangles.push_back(rVec);
+    rVec.clear();
+    channels.push_back(channelsOrder2);
+
+    imageNames.push_back("300321_PEGvsGELMAlif.lif - Image001-1 (RGB).tif");
     
-    std::vector<channelType> channelsOrder;
-    channelsOrder.push_back(channelType::nucleus);
-    channelsOrder.push_back(channelType::brightfield);
-    channelsOrder.push_back(channelType::actin);
+    rVec.push_back(Rect(1020, 420, 300, 250));
+    rectangles.push_back(rVec);
+    channels.push_back(channelsOrder2);
 
-    Mat bgr[3];
-    split(img, bgr);
-    vector<Mat> matImages;
-    matImages.push_back(bgr[0]);
-    matImages.push_back(bgr[1]);
-    matImages.push_back(bgr[2]);
-    string name = "test";
-    string name2 = "test_cell";
-    CustomImage image(matImages, channelsOrder, name);
-    CustomImage ce = image.cutImageOut(r, name2);
-    Cell cell(ce);
-    m_arrayImages.push_back(image);
-    m_cellImages.push_back(cell);
-
-    Mat actin = cell.getChannel(channelType::actin).clone();
-
-    int maxArrowsCount = 0;
-    int optimalThresholding;
-    for (int i = 0;i<255;i++)
+    for (int i = 0; i<imageNames.size(); i++)
     {
-        Mat actinThresh = actin.clone();
-        cv::threshold(actinThresh, actinThresh, i, 255, THRESH_BINARY);
-        
-        vector<double> angles;
-        m_analysis.analyseWithPCA(actinThresh, angles);
+        Mat img = imread(m_inpDir + imageNames[i], IMREAD_UNCHANGED);
 
-        int arrowsCount = angles.size();
-        if (arrowsCount > maxArrowsCount)
+        Mat bgr[3];
+        split(img, bgr);
+        vector<Mat> matImages;
+        matImages.push_back(bgr[0]);
+        matImages.push_back(bgr[1]);
+        matImages.push_back(bgr[2]);
+        CustomImage image(matImages, channels[i], imageNames[i]);
+        m_arrayImages.push_back(image);
+
+        for (int j = 0; j<rectangles[i].size(); j++)
         {
-            maxArrowsCount = arrowsCount;
-            optimalThresholding = i;
+            string name_cell = imageNames[i] + "_cell" + to_string(j);
+            CustomImage ce = image.cutImageOut(rectangles[i][j], name_cell);
+            Cell cell(ce);
+            m_cellImages.push_back(cell);
         }
     }
-    
-    Mat actinThresh = actin.clone();
-    cv::threshold(actinThresh, actinThresh, optimalThresholding, 255, THRESH_BINARY);
 
-    vector<double> random;
-    m_analysis.analyseWithPCA(actinThresh, random);
-    help::showWindow(actin, 2, "actin");
-    help::showWindow(actinThresh, 2, "actinT");
+}
+
+void WindowMain::on_pushButton_test_clicked()
+{
+    
+    Mat img = imread(m_inpDir + "300321_PEGvsGELMAlif.lif - Image001-1 (RGB).tif", IMREAD_UNCHANGED);
+    Rect r(1020, 420, 300, 250);
+    rectangle(img,r, Scalar(128, 255, 0));
+    help::showWindow(img,0.5);
+   
+    loadNiceCellImages();
 }
 
 void WindowMain::on_pushButton_loadImages_clicked()
@@ -265,7 +277,7 @@ void WindowMain::on_pushButton_loadImages_clicked()
         QMessageBox::information(this, "Sweetheart", "You need to have a nucleus, actin and brightfield channel. At least one of them is not here^^");
         return;
     }
-        
+
     string inName = ui.lineEdit_inpDir->text().toStdString();
     if (!inName.empty())
     {
@@ -273,11 +285,10 @@ void WindowMain::on_pushButton_loadImages_clicked()
     }
 
     float confThreshold = ui.doubleSpinBox_confThresh->value();
-    float nmsThreshold = ui.doubleSpinBox_nonMaxThresh->value(); //TODO: get that out
 
     m_preprocess.loadImages(m_arrayImages, m_inpDir, m_channels);
 
-    m_preprocess.applyYolo(m_arrayImages, m_cellImages, m_arrayImages_withYoloBoxes,confThreshold,nmsThreshold);
+    m_preprocess.applyYolo(m_arrayImages, m_cellImages, m_arrayImages_withYoloBoxes, confThreshold);
 
     
     bool isDead;
@@ -295,8 +306,8 @@ void WindowMain::on_pushButton_loadImages_clicked()
 
         try 
         {
-            m_analysis.analyseNucleusShape(m_cellImages[i]); //TODO: what analysis did not work => include e.g. the assert(isContour),...
-            m_analysis.analyseYapInNucleus(m_cellImages[i]);
+            m_analysis.analyseNucleus(m_cellImages[i]); //TODO: what analysis did not work => include e.g. the assert(isContour),...
+            m_analysis.analyseYap(m_cellImages[i]);
             m_analysis.analyseActin(m_cellImages[i]);
         }
         catch (...)
@@ -313,7 +324,7 @@ void WindowMain::on_pushButton_loadImages_clicked()
         m_cellImages.erase(m_cellImages.begin()+cellsToDelete[j]);
     }
 
-    m_averageAllCells = m_analysis.getAverageProperties(m_cellImages);
+    m_averageAllCells = m_preprocess.getAverageProperties(m_cellImages);
     
     QTableWidgetItem* newItem = new QTableWidgetItem(QString::fromStdString(to_string(m_arrayImages.size())));
     ui.tableWidget_all->setItem(0, 0, newItem);
@@ -329,7 +340,7 @@ void WindowMain::on_pushButton_loadImages_clicked()
         QTableWidgetItem* newItem5 = new QTableWidgetItem(QString::fromStdString(to_string(m_averageAllCells.nucleus_roundness)));
         ui.tableWidget_all->setItem(4, 0, newItem5);
         
-        radioButtonCellsChanged(ui.radioButton_singleCells->isChecked()); //TODO: change that!! not correct anymore
+        radioButtonCellsChanged(ui.radioButton_singleCells->isChecked());
     }
 
     if(failedAnalysisCells>0)
@@ -351,7 +362,6 @@ bool WindowMain::getImageToShow(Mat& outImg, string& name, double& scale)
     channelType channel = static_cast<channelType>(ui.comboBox_showImage->currentIndex());
     CustomImage image;
 
-
     if (ui.radioButton_cellArrays->isChecked())
     {
         if (scale == -1) { scale = 0.4; }
@@ -361,6 +371,7 @@ bool WindowMain::getImageToShow(Mat& outImg, string& name, double& scale)
     }
     if (ui.radioButton_singleCells->isChecked())
     {
+        if (m_cellImages.empty()) { return false; }
         if (scale == -1) { scale = 4; }
         image = m_cellImages[imageNumber];
         outImg = image.getChannel(channel);
@@ -368,6 +379,7 @@ bool WindowMain::getImageToShow(Mat& outImg, string& name, double& scale)
     }
     if (ui.radioButton_deletedCells->isChecked())
     {
+        if (m_deletedCellImages.empty()) { return false; }
         if (scale == -1) { scale = 4; }
         image = m_deletedCellImages[imageNumber];
         outImg = image.getChannel(channel);
@@ -390,8 +402,7 @@ bool WindowMain::getImageToShow(Mat& outImg, string& name, double& scale)
     outImg = outImg.clone();
 }
 
-// gescheites abfangen von else if/ if,... so dass nur eine kreuz geht? => auch bei anderer analyse original image anbieten?
-// oder beide weglassen? 
+
 void WindowMain::on_pushButton_showImage_clicked()
 {
     double scale = ui.doubleSpinBox_scale->value();
@@ -399,38 +410,73 @@ void WindowMain::on_pushButton_showImage_clicked()
     Mat image;
     string name;
 
+    int pca_squareLength = ui.spinBox_squareLengthPCA->value();
+    double pca_minEigvecRatio = ui.doubleSpinBox_minEigVecRatioPCA->value();
+
     //load image
     bool successful = getImageToShow(image, name, scale);
     if (!successful) { return; }
 
-    if (ui.checkBox_thresholded->isChecked())
+    //thresholdings
+    if (ui.checkBox_thresholdManually->isChecked())
     {
-        bool successful = help::thresh(image);
-        if (successful)
+        int threshValue = ui.spinBox_thresholdManually->value();
+        successful = help::thresh(image,threshValue);
+        if (successful) { name = name + "_threshManually"+to_string(threshValue); }
+    }
+    else if (ui.checkBox_thresholdOtsu->isChecked())
+    {
+        successful = help::thresh(image);
+        if (successful) { name = name + "_threshOtsu"; }
+    }
+    else if (ui.checkBox_thresholdPCA->isChecked())
+    {
+        int optimalThresholding = m_analysis.getOptimalThresholdingForPCA(image, pca_squareLength, pca_minEigvecRatio);
+        successful = help::thresh(image, optimalThresholding);
+        if (successful) { name = name + "_threshPCA"; }
+    }
+
+    if(ui.checkBox_edgeDetection->isChecked())
+    {
+        cv::blur(image, image, Size(3, 3));
+        int kernel_size = 3;
+        int lowThreshold = 50;
+        cv::Canny(image, image, lowThreshold, lowThreshold * 3, kernel_size);
+    }
+    if (ui.checkBox_FAdetection->isChecked())
+    {
+        GaussianBlur(image, image, Size(9, 9), 2, 2);
+        vector<Vec3f> circles;
+        HoughCircles(image, circles, HOUGH_GRADIENT, 2, image.rows / 4, 200, 100);
+        for (size_t i = 0; i < circles.size(); i++)
         {
-            name = name + "_thresh";
+            Point center(cvRound(circles[i][0]), cvRound(circles[i][1]));
+            int radius = cvRound(circles[i][2]);
+            
+            cvtColor(image,image, COLOR_GRAY2RGB);
+            // draw the circle center
+            circle(image, center, 3, Scalar(0, 255, 0), -1, 8, 0);
+            // draw the circle outline
+            circle(image, center, radius, Scalar(0, 0, 255), 3, 8, 0);
         }
     }
+    
+
     //apply analysis for depiction purposes
     bool analysisSuccessful = false;
     if (ui.checkBox_analysed->isChecked())
     {
         analysisSuccessful = m_analysis.analyseShape(image);
-        if (analysisSuccessful)
-        {
-            name = name + "_roundAnalysed";
-        }
+        if (analysisSuccessful) { name = name + "_roundAnalysed"; }
     }
     else if (ui.checkBox_pcaAnalysis->isChecked())
     {
         vector<double> random;
-        analysisSuccessful = m_analysis.analyseWithPCA(image, random);
-        if (analysisSuccessful)
-        {
-            name = name + "_pcaAnalysed";
-        }
+        analysisSuccessful = m_analysis.analyseWithPCA(image, random, pca_squareLength, pca_minEigvecRatio);
+        if (analysisSuccessful) { name = name + "_pcaAnalysed"; }
     }
-    else
+
+    else //TODO: check what happens for unscaled 16 bit image that were analyzed => probs not scaled ;(
     {
         if (!analysisSuccessful)
         {
@@ -483,7 +529,6 @@ void WindowMain::on_pushButton_writeOut_clicked()
     
     writeAnalysedDataToFile();
 
-    //TODO 8 bit jpg and 16 bit png
     if (ui.checkBox_cellArrays->isChecked())
     {
         for (auto entry : m_arrayImages)

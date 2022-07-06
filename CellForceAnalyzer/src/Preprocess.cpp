@@ -15,6 +15,7 @@ using namespace std;
 using namespace cv;
 namespace fs = std::filesystem;
 
+// if there is numbers in the start of the image => can happen that images are not loaded in the same order as in the windows folder
 void Preprocess::loadImages(std::vector<CustomImage>& images, string inpDir, std::vector<channelType> channelsOrder)
 {
     fs::path inPath = inpDir;
@@ -60,30 +61,77 @@ void Preprocess::loadImages(std::vector<CustomImage>& images, string inpDir, std
     }
 }
 
-void Preprocess::applyYolo(std::vector<CustomImage>& arrayImages, vector<Cell>& cellImages, vector<Mat>& arrayImages_withYoloBoxes, float confThreshold, float nmsThreshold)
+void Preprocess::applyYolo(std::vector<CustomImage>& arrayImages, vector<Cell>& cellImages, vector<Mat>& arrayImages_withYoloBoxes, float confThreshold)
 {
     for (const auto& entry : arrayImages)
     {
         Mat image_yolo_analysed;
-        vector<Cell> detectedCells = m_yolo.detectCells(entry, image_yolo_analysed, confThreshold, nmsThreshold);
+        vector<Cell> detectedCells = m_yolo.detectCells(entry, image_yolo_analysed, confThreshold);
         cellImages.insert(cellImages.end(), detectedCells.begin(), detectedCells.end());
         arrayImages_withYoloBoxes.push_back(image_yolo_analysed);
     }
 }
 
-
-// deprecated
-void Preprocess::thresholdImages(std::vector<CustomImage>& arrayImages, vector<CustomImage>& cellImages, vector<CustomImage>& arrayImages_thresholded, vector<CustomImage>& cellImages_thresholded)
+//better name?
+double findDataPointWithMostNeighbours(vector<double> input, double margin)
 {
-    for (auto& elem : arrayImages)
+    int i = 0;
+    vector<double> neighboursCount(input.size());
+    for (auto elem : input)
     {
-        arrayImages_thresholded.push_back(elem.getThresholdedImage());
+        for (auto neighbour : input)
+        {
+            if (neighbour<elem + margin && neighbour>elem - margin)
+            {
+                neighboursCount[i]++;
+            }
+        }
+        i++;
     }
 
-    for (auto& elem : cellImages)
+    vector<double> results;
+
+    double maxNeighbours = *max_element(neighboursCount.begin(), neighboursCount.end());
+    for (int j = 0; j < neighboursCount.size(); j++)
     {
-        cellImages_thresholded.push_back(elem.getThresholdedImage());
+        if (neighboursCount[j] == maxNeighbours)
+        {
+            results.push_back(input[j]);
+        }
     }
+
+    return help::median(results);
 }
 
+Cell Preprocess::getAverageProperties(const vector<Cell> cells)
+{
+    double summedNucleusArea = 0, summedNucleusCircularity = 0, summedNucleusRoundness = 0, summedActinArea = 0, summedActinDensity = 0,
+        summedActinMaxLength = 0, summedYapInNucleus = 0;
+    vector<double> actinPCAangles;
+    Cell averageAllCells;
+    for (auto cell : cells)
+    {
+        summedNucleusArea += cell.nucleus_area;
+        summedNucleusCircularity += cell.nucleus_circularity;
+        summedNucleusRoundness += cell.nucleus_roundness;
+
+        summedActinArea += cell.actin_area;
+        summedActinDensity += cell.actin_density;
+        summedActinMaxLength += cell.actin_maxLength;
+        actinPCAangles.push_back(cell.actin_mainAngle);
+
+        summedYapInNucleus += cell.yap_inNucleus;
+    }
+
+    averageAllCells.nucleus_area = summedNucleusArea / cells.size();
+    averageAllCells.nucleus_circularity = summedNucleusCircularity / cells.size();
+    averageAllCells.nucleus_roundness = summedNucleusRoundness / cells.size();
+    averageAllCells.actin_area = summedActinArea / cells.size();
+    averageAllCells.actin_density = summedActinDensity / cells.size();
+    averageAllCells.actin_maxLength = summedActinMaxLength / cells.size();
+    if (!actinPCAangles.empty()) { averageAllCells.actin_mainAngle = static_cast<int>(findDataPointWithMostNeighbours(actinPCAangles, 10)); }
+    averageAllCells.yap_inNucleus = summedYapInNucleus / cells.size();
+
+    return averageAllCells;
+}
 

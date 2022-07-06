@@ -11,7 +11,7 @@ namespace help
     const double M_PI = 3.14159265358979323846;
 
     std::string& copiedDirectoryToNiceString(std::string&);
-    bool thresh(cv::Mat&);
+    bool thresh(cv::Mat&, int = 0);
     void scaleData(cv::Mat&);
     double average(std::vector<double>);
     double median(std::vector<double>);

@@ -36,7 +36,7 @@ YoloNicheDetector::YoloNicheDetector()
 {
     string modelConfiguration = m_yoloInputDir + "yolov3_custom.cfg"; //"yolov3.cfg";
     string modelWeights = m_yoloInputDir + "yolov3_custom_last_18_2.weights"; //"yolov3.weights";
-    m_classes = getClassNames(m_yoloInputDir); //biz unnötig da nur 1 class TODO
+    m_classes = getClassNames(m_yoloInputDir); //biz unnötig da nur 1 class
     // Load the network
     m_net = readNetFromDarknet(modelConfiguration, modelWeights);
     // CUDA
@@ -44,11 +44,11 @@ YoloNicheDetector::YoloNicheDetector()
     m_net.setPreferableTarget(DNN_TARGET_CUDA);
 }
 
-//TODO improve 
-vector<Cell> YoloNicheDetector::detectCells(CustomImage arrayImage, Mat& arrayImage_withYoloBoxes, float confThresh, float nmsThresh)
+
+vector<Cell> YoloNicheDetector::detectCells(CustomImage arrayImage, Mat& arrayImage_withYoloBoxes, float confThresh)
 {
     confThreshold = confThresh;
-    nmsThreshold = nmsThresh;
+    nmsThreshold = 0.4;
     
     Mat img = arrayImage.createRGBimage().clone();
 

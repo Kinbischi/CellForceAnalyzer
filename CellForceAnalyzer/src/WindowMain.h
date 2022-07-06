@@ -34,6 +34,7 @@ private slots:
 
 private:
     bool getImageToShow(cv::Mat&, std::string&, double&);
+    void loadNiceCellImages();
 
     void writeAnalysedDataToFile();
 
@@ -63,46 +64,38 @@ private:
     
 };
 
-// TODO:
-// at the moment cells are 16 bit but not normalized => normalize them?
-// (before thresholding they get normalized)
-// 
-// 
+
 //TODO: generally -> put const where it belongs to!
 
 //TODO: perhaps nice to make customimg a virtual class and create an arrayImage type with yolo Mat in it??
+// 
+//TODO: create experiment class => so that every time images with different niches are loaded => an experiment block is loaded
+//TODO: multi data set => mehrfaches laden? => immer neu laden/ dazuzählen
 
-//TODO: absicherungs sachen
-// mehrfaches laden => immer neu laden, nicht dazuzählen (eg arrays nd cells)
-
-//TODO:
-// fett wichtig => für sache wie density isch es wichtig unscaled images z becho vom thunder => wahrschiendlich 16 bit 
-//=> scaling verzerrt die wahre wert => 
 // generell zum abkläre => mehr staining => mehr signal? => then we would be fucked concerning e.g. densities
 
-//Otsu thresholding is influenced depending on whether or not the image was normalized
-
 //TODO: 255 oder max8bit??
-
-// TODO array image yolo überlauf abwenden!
-//TODO: neu laden alles vorher löschen?
-
-//TODO: do not show boxes where borders were passed
-
-//TODO: create experiment class => so that every time images with different niches are loaded => an experiment block is loaded
 
 //TODO: why crash when previous plot not closed?
 // why no titles possible in plots
 
-//TODO: when should you clone? e.g. before every thresholding?
-// 
-// 
-// 
-//TODO check deleted cells from hannah data set 
-//is everything working?
-//Why tf are the images not stored in order in which they are loaded??
-//Cells are kept where actin is completely detached from nucleus!!?? wtf get that out
-
-//why is hannahs good looking cell twice detected but once deleted => in yolo procedure???
-
 //TODO absturz abfangen bei show img falls 0 cells
+
+//TODO: yolo => was trained on good rgb images (jpg) => what happens if scaleData does not work well??
+// e.g. one pixel is very high intensity in an 16 bit image and scaling fucks up => would at least be seeable in show image
+// but still keep it in mind => yolo can fail if one pixel is high and scaling fails => better scaling than min max??
+
+//TODO: try fourrier, analysis fibre counting, dot counting for focal adhesions
+
+//TODO: bug => first actin switching to array yolo => max image set to 0...
+
+//TODO: check if 16 bit images works? e.g. pca analysis or show image
+
+//TODO: for fun => if one thresholding/ analysis is checked => uncheck the other
+
+//TODO: load in squareLength and minRatio from gui also for analysis
+
+//TODO: try out intensity wise PCA => every point given to PCA as often as its intensity
+// eventuell mehrere square lengths weisen den arrow am ort zu?
+
+// try storing the ev ratios and iterate the thresholding and take the largest ev ratio direction

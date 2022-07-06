@@ -16,7 +16,7 @@ public:
     double nucleus_circularity;
     double nucleus_roundness;
     
-    double yap_inNucleus; //in percent
+    double yap_inNucleus; // percentage of the intensity
     
     int actin_area;
     double actin_density;

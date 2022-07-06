@@ -11,7 +11,7 @@ class YoloNicheDetector
 {
 public:
 	YoloNicheDetector();
-	std::vector<Cell> detectCells(CustomImage, cv::Mat&,float,float);
+	std::vector<Cell> detectCells(CustomImage, cv::Mat&,float);
 
 private:
 	cv::dnn::Net m_net;

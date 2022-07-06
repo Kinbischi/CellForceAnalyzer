@@ -58,7 +58,7 @@ namespace help
         }
     }
 
-    bool thresh(Mat& img)
+    bool thresh(Mat& img, int thresholdValue)
     {
         if (img.channels()==3)
         {
@@ -74,11 +74,18 @@ namespace help
             img.convertTo(img, CV_8U, 1 / 256.0);
         }
 
-        // smoothen image
-        int ksize = 5;
-        cv::GaussianBlur(img, img, Size(ksize, ksize), 0, 0);
-
-        auto thresholdValue = cv::threshold(img, img, 0, 255, THRESH_OTSU);
+        if (thresholdValue!=0)
+        {
+            cv::threshold(img, img, thresholdValue, 255, THRESH_BINARY); //used in fiber pca => no smoothing
+        }
+        else
+        {
+            // smoothen image
+            int ksize = 5;
+            cv::GaussianBlur(img, img, Size(ksize, ksize), 0, 0);
+            auto thresholdValue = cv::threshold(img, img, 0, 255, THRESH_OTSU);
+        }
+        
         return true;
     }
 

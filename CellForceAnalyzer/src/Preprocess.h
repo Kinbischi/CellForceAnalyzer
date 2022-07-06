@@ -12,7 +12,9 @@ public:
 
 	void loadImages(std::vector<CustomImage>&, std::string,std::vector<channelType>);
 
-	void applyYolo(std::vector<CustomImage>&, std::vector<Cell>&, std::vector<cv::Mat>&, float, float);
+	void applyYolo(std::vector<CustomImage>&, std::vector<Cell>&, std::vector<cv::Mat>&, float);
+
+	Cell getAverageProperties(const std::vector<Cell>);
 
 	void thresholdImages(std::vector<CustomImage>&, std::vector<CustomImage>&, std::vector<CustomImage>&, std::vector<CustomImage>&);
 

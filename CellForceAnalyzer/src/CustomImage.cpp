@@ -15,7 +15,7 @@ CustomImage::CustomImage(const CustomImage& other)
 	m_name = other.m_name;
 	m_brightfieldChannel = other.m_brightfieldChannel.clone();
 	m_nucleusChannel = other.m_nucleusChannel.clone();
-	m_cytoplasmChannel = other.m_cytoplasmChannel.clone();
+	m_vinculinChannel = other.m_vinculinChannel.clone();
 	m_yapChannel = other.m_yapChannel.clone();
 	m_actinChannel = other.m_actinChannel.clone();
 }
@@ -52,8 +52,8 @@ string CustomImage::getName(channelType type)
 	case channelType::nucleus:
 		name += "_nc";
 		break;
-	case channelType::cytoplasm:
-		name += "_cp";
+	case channelType::vinculin:
+		name += "_vin";
 		break;
 	case channelType::yap:
 		name += "_yap";
@@ -79,8 +79,8 @@ void CustomImage::setChannel(Mat img, channelType type)
 	case channelType::nucleus:
 		m_nucleusChannel = img;
 		break;
-	case channelType::cytoplasm:
-		m_cytoplasmChannel = img;
+	case channelType::vinculin:
+		m_vinculinChannel = img;
 		break;
 	case channelType::yap:
 		m_yapChannel = img;
@@ -103,8 +103,8 @@ Mat CustomImage::getChannel(channelType type)
 	case channelType::nucleus:
 		img = m_nucleusChannel;
 		break;
-	case channelType::cytoplasm:
-		img = m_cytoplasmChannel;
+	case channelType::vinculin:
+		img = m_vinculinChannel;
 		break;
 	case channelType::yap:
 		img = m_yapChannel;
@@ -133,7 +133,7 @@ void CustomImage::threshold()
 	m_name = m_name + "_thresholded";
 	help::thresh(m_brightfieldChannel);
 	help::thresh(m_nucleusChannel);
-	help::thresh(m_cytoplasmChannel);
+	help::thresh(m_vinculinChannel);
 	help::thresh(m_yapChannel);
 	help::thresh(m_actinChannel);
 }
@@ -154,7 +154,7 @@ CustomImage CustomImage::cutImageOut(const Rect& box,string inName)
 
 	Mat bfC = m_brightfieldChannel;
 	Mat nC = m_nucleusChannel;
-	Mat cC = m_cytoplasmChannel;
+	Mat vinC = m_vinculinChannel;
 	Mat yapC = m_yapChannel;
 	Mat acC = m_actinChannel;
 
@@ -166,9 +166,9 @@ CustomImage CustomImage::cutImageOut(const Rect& box,string inName)
 	{
 		nC = nC(box).clone();
 	}
-	if (!cC.empty())
+	if (!vinC.empty())
 	{
-		cC = cC(box).clone();
+		vinC = vinC(box).clone();
 	}
 	if (!yapC.empty())
 	{
@@ -181,7 +181,7 @@ CustomImage CustomImage::cutImageOut(const Rect& box,string inName)
 
 	boxImage.setChannel(bfC,channelType::brightfield);
 	boxImage.setChannel(nC, channelType::nucleus);
-	boxImage.setChannel(cC, channelType::cytoplasm);
+	boxImage.setChannel(vinC, channelType::vinculin);
 	boxImage.setChannel(yapC, channelType::yap);
 	boxImage.setChannel(acC, channelType::actin);
 	return boxImage;

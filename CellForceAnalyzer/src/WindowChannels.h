@@ -19,13 +19,9 @@ public:
     std::vector<channelType> set_ChannelTypes();
 
 private slots:
-    //void on_okButton_clicked();
-    
 
     
 private:
-    //TODO decide whether pointer or not???
-    //TODO: give channels as signal slot connection
     Ui::WindowChannels* ui;
 };
 

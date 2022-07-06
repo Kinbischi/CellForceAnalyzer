@@ -8,18 +8,19 @@ class Analysis
 
 public:
 
-	void analyseNucleusShape(Cell&);
-	void analyseYapInNucleus(Cell&);
-	bool isDeadCell(Cell);
+	void analyseNucleus(Cell&);
+	void analyseYap(Cell&);
 	void analyseActin(Cell&);
-	Cell getAverageProperties(std::vector<Cell>);
+
+	bool isDeadCell(Cell);
 	bool analyseShape(cv::Mat&);
 
-	bool pointCloudPCA(const std::vector<cv::Point>&, const int, std::vector<cv::Point2d>&);
-	bool analyseWithPCA(cv::Mat&, std::vector<double>&);
-	bool analyseWithPCA2(cv::Mat&, std::vector<double>&, int&);
+	bool pointCloudPCA(const std::vector<cv::Point>&, const int, std::vector<cv::Point2d>&, double = 1.5);
+	bool analyseWithPCA(cv::Mat&, std::vector<double>&, int = 15, double = 1.5, cv::Mat = cv::Mat());
+	int getOptimalThresholdingForPCA(cv::Mat, int, double);
 
 	std::vector<cv::Point> getWhitePointsFromThresholdedImage(cv::Mat);
+	std::vector<cv::Point> getPointsDependingOnIntensityFromImage(cv::Mat);
 
 };
 
