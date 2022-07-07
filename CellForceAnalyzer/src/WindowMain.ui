@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>534</width>
-    <height>917</height>
+    <height>908</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -524,14 +524,39 @@
            <item>
             <widget class="QCheckBox" name="checkBox_pcaAnalysis">
              <property name="text">
-              <string>PCA Analysis</string>
+              <string>PCA</string>
              </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QComboBox" name="comboBox_PCA">
+             <property name="minimumSize">
+              <size>
+               <width>120</width>
+               <height>0</height>
+              </size>
+             </property>
+             <item>
+              <property name="text">
+               <string>original Image</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>thresholded Image</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>intensity based</string>
+              </property>
+             </item>
             </widget>
            </item>
            <item>
             <widget class="QLabel" name="label_4">
              <property name="text">
-              <string>Square Length PCA</string>
+              <string>Square Length</string>
              </property>
             </widget>
            </item>
@@ -545,7 +570,7 @@
            <item>
             <widget class="QLabel" name="label_9">
              <property name="text">
-              <string>min Eigenvec ratio</string>
+              <string>minRatio Eigval</string>
              </property>
             </widget>
            </item>

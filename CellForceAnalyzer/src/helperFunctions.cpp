@@ -58,7 +58,7 @@ namespace help
         }
     }
 
-    bool thresh(Mat& img, int thresholdValue)
+    bool thresh(Mat& img, int thresholdValue, bool scaleTheData)
     {
         if (img.channels()==3)
         {
@@ -67,7 +67,11 @@ namespace help
 
         img = img.clone();
         //scale images before every thresholding
-        scaleData(img);
+        if (scaleTheData)
+        {
+            scaleData(img);
+        }
+        
         //convert to uint8 for threshold function 
         if (img.depth()==CV_16U)
         {

@@ -15,7 +15,7 @@ public:
 	bool isDeadCell(Cell);
 	bool analyseShape(cv::Mat&);
 
-	bool pointCloudPCA(const std::vector<cv::Point>&, const int, std::vector<cv::Point2d>&, double = 1.5);
+	bool pointCloudPCA(const std::vector<cv::Point>&, const int, std::vector<cv::Point2d>&, double&, double = 1.5);
 	bool analyseWithPCA(cv::Mat&, std::vector<double>&, int = 15, double = 1.5, cv::Mat = cv::Mat());
 	int getOptimalThresholdingForPCA(cv::Mat, int, double);
 

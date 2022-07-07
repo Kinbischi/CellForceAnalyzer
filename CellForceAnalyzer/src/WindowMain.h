@@ -99,3 +99,4 @@ private:
 // eventuell mehrere square lengths weisen den arrow am ort zu?
 
 // try storing the ev ratios and iterate the thresholding and take the largest ev ratio direction
+// TODO: try out intensity again => did you pass a rgb image?

@@ -231,9 +231,10 @@ vector<double> analyseAreaAndDensity(Mat channel)
     return result;
 }
 
+/*
 bool Analysis::pointCloudPCA(const vector<Point>& pts, const int squareLength, vector<Point2d>& eigen_vecs, double minEigVecRatio)
 {
-    if (pts.size() < squareLength*squareLength*15)// old 3
+    if (pts.size() < squareLength * squareLength * 15)// old 3
     {
         return false;
     }
@@ -262,6 +263,48 @@ bool Analysis::pointCloudPCA(const vector<Point>& pts, const int squareLength, v
     // - in the analysis one principal component is clearly more dominant than the other => this can be seen via the eigenvalues
     int subImgArea = squareLength * squareLength;
     double ratio = eigen_val[0] / eigen_val[1];
+    if (ratio < minEigVecRatio) //pts.size() < 0.1 * subImgArea
+    {
+        return false;
+    }
+
+    return true;
+}
+*/
+
+bool Analysis::pointCloudPCA(const vector<Point>& pts, const int squareLength, vector<Point2d>& eigen_vecs, double& eigValRatio, double minEigVecRatio)
+{
+    if (pts.size() < 10) // old 3 //squareLength*squareLength*15
+    {
+        return false;
+    }
+    // the pca analysis uses another input format for the data
+    Mat data_pts = Mat(pts.size(), 2, CV_64F);
+    for (int i = 0; i < data_pts.rows; i++)
+    {
+        data_pts.at<double>(i, 0) = pts[i].x;
+        data_pts.at<double>(i, 1) = pts[i].y;
+    }
+
+    //Perform PCA analysis
+    PCA pca_analysis(data_pts, Mat(), PCA::DATA_AS_ROW);
+    // center = Point(static_cast<int>(pca_analysis.mean.at<double>(0, 0)), static_cast<int>(pca_analysis.mean.at<double>(0, 1)));
+
+    //Store the eigenvalues and eigenvectors
+    vector<double> eigen_val(2);
+    for (int i = 0; i < 2; i++)
+    {
+        eigen_vecs[i] = Point2d(pca_analysis.eigenvectors.at<double>(i, 0), pca_analysis.eigenvectors.at<double>(i, 1));
+        eigen_val[i] = pca_analysis.eigenvalues.at<double>(i);
+    }
+
+    // for fiber analysis: analysis only worked if:
+    // - at least 10 percent of image need to be covered with fibers (white points)
+    // - in the analysis one principal component is clearly more dominant than the other => this can be seen via the eigenvalues
+    int subImgArea = squareLength * squareLength;
+    double ratio = eigen_val[0] / eigen_val[1];
+
+    eigValRatio = ratio;
     if (ratio < minEigVecRatio) //pts.size() < 0.1 * subImgArea
     {
         return false;
@@ -317,7 +360,79 @@ vector<Point> Analysis::getPointsDependingOnIntensityFromImage(Mat img)
     return pointCloud;
 }
 
+bool Analysis::analyseWithPCA(Mat& img, vector<double>& resultingAngles, int squareLength, double minEigVecRatio, Mat imgThresh)
+{
+    int lengthX = squareLength; //length of mini-squares that are fed into the pca
+    int lengthY = squareLength;
 
+    int edgeX = (img.cols % lengthX) / 2;
+    int edgeY = (img.rows % lengthY) / 2;
+
+    if (imgThresh.empty()) // if no thresholded image is given => usual otsu thresholding is applied
+    {
+        imgThresh = img;
+        bool successful = help::thresh(imgThresh);
+        if (!successful) { return false; }
+    }
+
+    help::scaleData(img);
+    if (img.depth() == CV_16U) { img.convertTo(img, CV_8U, 1 / 256.0); }
+    Mat copyBW = img.clone();
+    cv::cvtColor(img, img, COLOR_GRAY2RGB);
+
+    for (int i = 0; i < img.cols / lengthX; i++)
+    {
+        for (int j = 0; j < img.rows / lengthY; j++)
+        {
+            Rect rect(edgeX + i * lengthX, edgeY + j * lengthY, lengthX, lengthY);
+            Mat subImg = copyBW(rect);
+            //Mat subImg = imgThresh(rect);
+            //vector<Point> points = getWhitePointsFromThresholdedImage(subImg);
+            //vector<Point> points = getPointsDependingOnIntensityFromImage(subImg);
+
+            rectangle(img, rect, Scalar(0, 255, 128));
+            help::showWindow(img, 1.8);
+            help::showWindow(subImg, 4);
+            
+            bool worked = false;
+            double maxEigValRatio = 0;
+            int optimalThresholding;
+            vector<Point2d> eigen_vecs(2);
+            for (int k = 10; k < 256; k += 5) //heavy function => thresholds a lot of times!!
+            {
+                Mat threshImg = subImg; //TODO: dont worked = false if subImgnot at least value 5 fore every pixel
+                help::showWindow(threshImg); 
+                help::thresh(threshImg, k, false);
+                help::showWindow(threshImg,2);
+                vector<Point> points = getWhitePointsFromThresholdedImage(threshImg);
+                
+                
+
+                double eigValRatio;
+                bool didWork = pointCloudPCA(points, lengthX, eigen_vecs, eigValRatio, minEigVecRatio);
+                if (eigValRatio > maxEigValRatio && didWork)
+                {
+                    worked = true;
+                    maxEigValRatio = eigValRatio;
+                    optimalThresholding = k;
+                }
+            }
+
+            if (worked)
+            {
+                Point center = Point(edgeX + (i + 0.5) * lengthX, edgeY + (j + 0.5) * lengthY);
+                rectangle(img, rect, Scalar(0, 255, 128));
+                help::drawDoubleArrow(img, center, eigen_vecs, Scalar(0, 128, 255), lengthX);
+
+                double angle = getAngleFromVectors(eigen_vecs);
+                resultingAngles.push_back(angle);
+            }
+        }
+    }
+    if (resultingAngles.size() < 5) { return false; }
+    return true;
+}
+/*
 bool Analysis::analyseWithPCA(Mat& img, vector<double>& resultingAngles, int squareLength, double minEigVecRatio, Mat imgThresh)
 {
     int lengthX = squareLength; //length of mini-squares that are fed into the pca
@@ -364,6 +479,7 @@ bool Analysis::analyseWithPCA(Mat& img, vector<double>& resultingAngles, int squ
     if (resultingAngles.size() < 5) { return false; }
     return true;
 }
+*/
 
 int Analysis::getOptimalThresholdingForPCA(Mat inImg, int squareLength, double minEigVecRatio)
 {
@@ -419,7 +535,8 @@ void Analysis::analyseActin(Cell& cell)
 
     vector<Point> points = getWhitePointsFromThresholdedImage(actinThresh);
     vector<Point2d> eigen_vecs(2);
-    bool worked = pointCloudPCA(points, actin.cols, eigen_vecs);
+    double unnec = 0;
+    bool worked = pointCloudPCA(points, actin.cols, eigen_vecs,unnec); //TOCHANGE
     double mainAngle = getAngleFromVectors(eigen_vecs);
     cell.actin_mainAngle = mainAngle;
 
@@ -452,7 +569,8 @@ bool Analysis::analyseShape(Mat& img)
 
     vector<Point> points = getWhitePointsFromThresholdedImage(imgThresh);
     vector<Point2d> eigen_vecs(2);
-    bool worked = pointCloudPCA(points, img.cols, eigen_vecs);
+    double hi;
+    bool worked = pointCloudPCA(points, img.cols, eigen_vecs,hi); //TOCHANGE
     Point ctr = Point(img.cols / 2, img.rows / 2);
 
     help::scaleData(img);
