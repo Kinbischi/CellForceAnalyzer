@@ -360,6 +360,23 @@ vector<Point> Analysis::getPointsDependingOnIntensityFromImage(Mat img)
     return pointCloud;
 }
 
+bool squareisNotBackground(Mat img)
+{
+    int area = img.rows * img.cols;
+    double summedPixelIntensity = 0;
+    for (int i = 0; i < img.rows; i++)
+    {
+        for (int j = 0; j < img.cols; j++)
+        {
+            int pixelIntensity = img.at<uchar>(i, j);
+            summedPixelIntensity += pixelIntensity;
+        }
+    }
+
+    if (summedPixelIntensity / area < 10) { return false; }
+    else { return true; }
+}
+
 bool Analysis::analyseWithPCA(Mat& img, vector<double>& resultingAngles, int squareLength, double minEigVecRatio, Mat imgThresh)
 {
     int lengthX = squareLength; //length of mini-squares that are fed into the pca
@@ -401,12 +418,11 @@ bool Analysis::analyseWithPCA(Mat& img, vector<double>& resultingAngles, int squ
             for (int k = 10; k < 256; k += 5) //heavy function => thresholds a lot of times!!
             {
                 Mat threshImg = subImg; //TODO: dont worked = false if subImgnot at least value 5 fore every pixel
+
                 help::showWindow(threshImg); 
                 help::thresh(threshImg, k, false);
                 help::showWindow(threshImg,2);
                 vector<Point> points = getWhitePointsFromThresholdedImage(threshImg);
-                
-                
 
                 double eigValRatio;
                 bool didWork = pointCloudPCA(points, lengthX, eigen_vecs, eigValRatio, minEigVecRatio);
@@ -418,7 +434,7 @@ bool Analysis::analyseWithPCA(Mat& img, vector<double>& resultingAngles, int squ
                 }
             }
 
-            if (worked)
+            if (worked && squareisNotBackground(subImg))
             {
                 Point center = Point(edgeX + (i + 0.5) * lengthX, edgeY + (j + 0.5) * lengthY);
                 rectangle(img, rect, Scalar(0, 255, 128));
