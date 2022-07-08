@@ -224,6 +224,11 @@ void WindowMain::loadNiceCellImages()
     imageNames.push_back("300321_PEGvsGELMAlif.lif - Image001-1 (RGB).tif");
     
     rVec.push_back(Rect(1020, 420, 300, 250));
+    rVec.push_back(Rect(10, 1240, 270, 530));
+    rVec.push_back(Rect(840, 1080, 270, 260));
+    rVec.push_back(Rect(1640, 1130, 310, 240));
+    rVec.push_back(Rect(1280, 1090, 220, 310));
+    rVec.push_back(Rect(200, 1150, 330, 210));
     rectangles.push_back(rVec);
     channels.push_back(channelsOrder2);
 
@@ -257,6 +262,16 @@ void WindowMain::on_pushButton_test_clicked()
     Mat img = imread(m_inpDir + "300321_PEGvsGELMAlif.lif - Image001-1 (RGB).tif", IMREAD_UNCHANGED);
     Rect r(1020, 420, 300, 250);
     rectangle(img,r, Scalar(128, 255, 0));
+    Rect r1(10, 1240, 270, 500);
+    rectangle(img, r1, Scalar(128, 255, 0));
+    Rect r2(840, 1080, 270, 260);
+    rectangle(img, r2, Scalar(128, 255, 0));
+    Rect r3(1640, 1130, 310, 240);
+    rectangle(img, r3, Scalar(128, 255, 0));
+    Rect r4(1280, 1090, 220, 310);
+    rectangle(img, r4, Scalar(128, 255, 0));
+    Rect r5(200, 1150, 330, 210);
+    rectangle(img, r5, Scalar(128, 255, 0));
     help::showWindow(img,0.5);
    
     loadNiceCellImages();
@@ -411,7 +426,7 @@ void WindowMain::on_pushButton_showImage_clicked()
     string name;
 
     int pca_squareLength = ui.spinBox_squareLengthPCA->value();
-    double pca_minEigvecRatio = ui.doubleSpinBox_minEigVecRatioPCA->value();
+    double pca_minEigvalRatio = ui.doubleSpinBox_minEigValRatioPCA->value();
 
     //load image
     bool successful = getImageToShow(image, name, scale);
@@ -429,11 +444,17 @@ void WindowMain::on_pushButton_showImage_clicked()
         successful = help::thresh(image);
         if (successful) { name = name + "_threshOtsu"; }
     }
-    else if (ui.checkBox_thresholdPCA->isChecked())
+    else if (ui.checkBox_thresholdPCAoptSingle->isChecked())
     {
-        int optimalThresholding = m_analysis.getOptimalThresholdingForPCA(image, pca_squareLength, pca_minEigvecRatio);
+        int optimalThresholding = m_analysis.getOptimalThresholdingForPCA(image, pca_squareLength, pca_minEigvalRatio);
         successful = help::thresh(image, optimalThresholding);
         if (successful) { name = name + "_threshPCA"; }
+    }
+    else if (ui.checkBox_thresholdPCAoptSquares->isChecked())
+    {
+        Mat imgThresh;
+        help::pcaType type = help::pcaType::squarePCAoptimizedThresh;
+        m_analysis.getThresholdedImage(image, imgThresh, type, pca_squareLength, pca_minEigvalRatio, 0);
     }
 
     if(ui.checkBox_edgeDetection->isChecked())
@@ -441,7 +462,7 @@ void WindowMain::on_pushButton_showImage_clicked()
         cv::blur(image, image, Size(3, 3));
         int kernel_size = 3;
         int lowThreshold = 50;
-        cv::Canny(image, image, lowThreshold, lowThreshold * 3, kernel_size);
+        cv::Canny(image, image, lowThreshold, lowThreshold * 3, kernel_size); //TODO: what is wrong here?
     }
     if (ui.checkBox_FAdetection->isChecked())
     {
@@ -472,7 +493,7 @@ void WindowMain::on_pushButton_showImage_clicked()
     else if (ui.checkBox_pcaAnalysis->isChecked())
     {
         vector<double> random;
-        analysisSuccessful = m_analysis.analyseWithPCA(image, random, pca_squareLength, pca_minEigvecRatio);
+        analysisSuccessful = m_analysis.analyseWithPCA(image, random, pca_squareLength, pca_minEigvalRatio);
         if (analysisSuccessful) { name = name + "_pcaAnalysed"; }
     }
 

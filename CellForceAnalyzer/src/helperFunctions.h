@@ -9,7 +9,7 @@
 namespace help
 {
     const double M_PI = 3.14159265358979323846;
-    enum class thresholdType { brightfield, nucleus, vinculin, yap, actin, None };
+    enum class pcaType { otsu, allImgPCAoptimizedThresh, squarePCAoptimizedThresh, manual, intensity, None };
 
     std::string& copiedDirectoryToNiceString(std::string&);
     bool thresh(cv::Mat&, int = 0, bool = true);

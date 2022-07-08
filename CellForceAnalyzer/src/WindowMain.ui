@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>534</width>
+    <width>561</width>
     <height>908</height>
    </rect>
   </property>
@@ -449,9 +449,16 @@
             <number>0</number>
            </property>
            <item>
+            <widget class="QLabel" name="label_10">
+             <property name="text">
+              <string>Thresholding:</string>
+             </property>
+            </widget>
+           </item>
+           <item>
             <widget class="QCheckBox" name="checkBox_thresholdOtsu">
              <property name="text">
-              <string>Threshold Otsu</string>
+              <string>Otsu</string>
              </property>
              <property name="checked">
               <bool>false</bool>
@@ -459,16 +466,9 @@
             </widget>
            </item>
            <item>
-            <widget class="QCheckBox" name="checkBox_thresholdPCA">
-             <property name="text">
-              <string>Threshold for PCA</string>
-             </property>
-            </widget>
-           </item>
-           <item>
             <widget class="QCheckBox" name="checkBox_thresholdManually">
              <property name="text">
-              <string>Threshold manually</string>
+              <string>Manual</string>
              </property>
             </widget>
            </item>
@@ -476,6 +476,20 @@
             <widget class="QSpinBox" name="spinBox_thresholdManually">
              <property name="maximum">
               <number>254</number>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QCheckBox" name="checkBox_thresholdPCAoptSingle">
+             <property name="text">
+              <string>PCAopt single</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QCheckBox" name="checkBox_thresholdPCAoptSquares">
+             <property name="text">
+              <string>PCAopt squares</string>
              </property>
             </widget>
            </item>
@@ -491,31 +505,6 @@
               </size>
              </property>
             </spacer>
-           </item>
-          </layout>
-         </item>
-         <item>
-          <layout class="QHBoxLayout" name="horizontalLayout_15">
-           <item>
-            <widget class="QCheckBox" name="checkBox_edgeDetection">
-             <property name="text">
-              <string>Edge Detection</string>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QCheckBox" name="checkBox_FAdetection">
-             <property name="text">
-              <string>FA Detection</string>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QCheckBox" name="checkBox_analysed">
-             <property name="text">
-              <string>Roundness Analysis</string>
-             </property>
-            </widget>
            </item>
           </layout>
          </item>
@@ -575,12 +564,37 @@
             </widget>
            </item>
            <item>
-            <widget class="QDoubleSpinBox" name="doubleSpinBox_minEigVecRatioPCA">
+            <widget class="QDoubleSpinBox" name="doubleSpinBox_minEigValRatioPCA">
              <property name="singleStep">
               <double>0.100000000000000</double>
              </property>
              <property name="value">
               <double>1.500000000000000</double>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+         <item>
+          <layout class="QHBoxLayout" name="horizontalLayout_15">
+           <item>
+            <widget class="QCheckBox" name="checkBox_edgeDetection">
+             <property name="text">
+              <string>Edge Detection</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QCheckBox" name="checkBox_FAdetection">
+             <property name="text">
+              <string>FA Detection</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QCheckBox" name="checkBox_analysed">
+             <property name="text">
+              <string>Roundness Analysis</string>
              </property>
             </widget>
            </item>
@@ -876,7 +890,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>534</width>
+     <width>561</width>
      <height>26</height>
     </rect>
    </property>
