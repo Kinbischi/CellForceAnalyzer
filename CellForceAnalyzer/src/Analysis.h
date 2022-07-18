@@ -16,10 +16,10 @@ public:
 	bool isDeadCell(Cell);
 	bool analyseShape(cv::Mat&);
 
-	bool pointCloudPCA(const std::vector<cv::Point>&, const int, std::vector<cv::Point2d>&, double&, double = 1.5);
-	bool analyseWithPCA(cv::Mat&, std::vector<double>&, int = 15, double = 1.5, cv::Mat = cv::Mat());
+	bool pointCloudPCA(const std::vector<cv::Point>&, const int, std::vector<cv::Point2d>&, double = 1.5, std::shared_ptr<double> = nullptr);
+	bool analyseWithPCA(cv::Mat&, std::vector<double>&, int, double, cv::Mat = cv::Mat());
 
-	bool getThresholdedImage(cv::Mat, cv::Mat&, help::pcaType, int, double, int);
+	void getPCAoptThresholdedImage(cv::Mat&, int, double);
 	int getOptimalThresholdingForPCA(cv::Mat, int, double);
 
 	std::vector<cv::Point> getWhitePointsFromThresholdedImage(cv::Mat);

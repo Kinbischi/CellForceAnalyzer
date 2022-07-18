@@ -8,6 +8,9 @@
 #include "Cell.h"
 #include "Analysis.h"
 
+enum class thresholdingType { None, otsu, manual, squarePCAoptimizedThresh, allImgPCAoptimizedThresh };
+enum class displayType { original, thresholded };
+
 class WindowMain : public QMainWindow
 {
     Q_OBJECT
@@ -33,8 +36,11 @@ private slots:
 
 
 private:
+    void updateGeneralTable();
     bool getImageToShow(cv::Mat&, std::string&, double&);
     void loadNiceCellImages();
+    bool analysisConducted();
+    
 
     void writeAnalysedDataToFile();
 
@@ -79,7 +85,7 @@ private:
 //TODO: why crash when previous plot not closed?
 // why no titles possible in plots
 
-//TODO absturz abfangen bei show img falls 0 cells
+//TODO absturz abfangen bei show img falls 0 cells oder 0 yoloBoxes oder 0 deleted cells => perhaps try bei get image?
 
 //TODO: yolo => was trained on good rgb images (jpg) => what happens if scaleData does not work well??
 // e.g. one pixel is very high intensity in an 16 bit image and scaling fucks up => would at least be seeable in show image
@@ -91,12 +97,9 @@ private:
 
 //TODO: check if 16 bit images works? e.g. pca analysis or show image
 
-//TODO: for fun => if one thresholding/ analysis is checked => uncheck the other
+//TODO separate loading and analysis application
 
-//TODO: load in squareLength and minRatio from gui also for analysis
+//TODO: load in all variables from  into constants in helperfile? not always in function
 
-//TODO: try out intensity wise PCA => every point given to PCA as often as its intensity
-// eventuell mehrere square lengths weisen den arrow am ort zu?
-
-// try storing the ev ratios and iterate the thresholding and take the largest ev ratio direction
-// TODO: try out intensity again => did you pass a rgb image?
+//Idee summieren entlang kanten => schauen ob pixel uniformely dist or not.
+//PCA is not working if two fibers are at left and right edge => improvable?

@@ -9,7 +9,8 @@
 namespace help
 {
     const double M_PI = 3.14159265358979323846;
-    enum class pcaType { otsu, allImgPCAoptimizedThresh, squarePCAoptimizedThresh, manual, intensity, None };
+    const double minPercentagePointsPCA = 0.08;
+    const double minAverageIntensityForNotBackground = 30;
 
     std::string& copiedDirectoryToNiceString(std::string&);
     bool thresh(cv::Mat&, int = 0, bool = true);

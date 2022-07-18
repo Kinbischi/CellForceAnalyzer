@@ -4,7 +4,7 @@
 #include <set>
 #include <cassert>
 #include <fstream>
- 
+
 #include <opencv2/core.hpp>
 #include <opencv2/highgui.hpp>
 #include <opencv2/imgproc.hpp>
@@ -103,6 +103,16 @@ void WindowMain::setCellTable(Cell cell)
     ui.tableWidget_cell->setItem(5, 0, newItem);
     newItem = new QTableWidgetItem(QString::fromStdString(to_string(cell.actin_mainAngle)));
     ui.tableWidget_cell->setItem(6, 0, newItem);
+}
+
+void WindowMain::updateGeneralTable()
+{
+    QTableWidgetItem* newItem = new QTableWidgetItem(QString::fromStdString(to_string(m_arrayImages.size())));
+    ui.tableWidget_all->setItem(0, 0, newItem);
+    QTableWidgetItem* newItem2 = new QTableWidgetItem(QString::fromStdString(to_string(m_cellImages.size())));
+    ui.tableWidget_all->setItem(1, 0, newItem2);
+    QTableWidgetItem* newItem3 = new QTableWidgetItem(QString::fromStdString(to_string(m_deletedCellImages.size())));
+    ui.tableWidget_all->setItem(2, 0, newItem3);
 }
 
 void WindowMain::on_pushButton_channels_clicked()
@@ -213,7 +223,7 @@ void WindowMain::loadNiceCellImages()
     channelsOrder2.push_back(channelType::actin);
 
     imageNames.push_back("300321_PEGvsGELMAlif.lif - Image006-1 (RGB).tif");
-    rVec.push_back(Rect(1000, 1180, 500, 500));
+    rVec.push_back(Rect(1135, 1200, 270, 480));
     rVec.push_back(Rect(140, 1180, 340, 340));
     rVec.push_back(Rect(1250, 200, 750, 250));
     rVec.push_back(Rect(880, 1630, 350, 250));
@@ -253,15 +263,15 @@ void WindowMain::loadNiceCellImages()
             m_cellImages.push_back(cell);
         }
     }
-
 }
+
 
 void WindowMain::on_pushButton_test_clicked()
 {
-    
-    Mat img = imread(m_inpDir + "300321_PEGvsGELMAlif.lif - Image001-1 (RGB).tif", IMREAD_UNCHANGED);
-    Rect r(1020, 420, 300, 250);
+    Mat img = imread(m_inpDir + "300321_PEGvsGELMAlif.lif - Image006-1 (RGB).tif", IMREAD_UNCHANGED);
+    Rect r(1150, 1180, 250, 500);
     rectangle(img,r, Scalar(128, 255, 0));
+    /*
     Rect r1(10, 1240, 270, 500);
     rectangle(img, r1, Scalar(128, 255, 0));
     Rect r2(840, 1080, 270, 260);
@@ -272,9 +282,11 @@ void WindowMain::on_pushButton_test_clicked()
     rectangle(img, r4, Scalar(128, 255, 0));
     Rect r5(200, 1150, 330, 210);
     rectangle(img, r5, Scalar(128, 255, 0));
-    help::showWindow(img,0.5);
+    */
+    //help::showWindow(img,0.5);
    
     loadNiceCellImages();
+    updateGeneralTable();
 }
 
 void WindowMain::on_pushButton_loadImages_clicked()
@@ -341,12 +353,7 @@ void WindowMain::on_pushButton_loadImages_clicked()
 
     m_averageAllCells = m_preprocess.getAverageProperties(m_cellImages);
     
-    QTableWidgetItem* newItem = new QTableWidgetItem(QString::fromStdString(to_string(m_arrayImages.size())));
-    ui.tableWidget_all->setItem(0, 0, newItem);
-    QTableWidgetItem* newItem2 = new QTableWidgetItem(QString::fromStdString(to_string(m_cellImages.size())));
-    ui.tableWidget_all->setItem(1, 0, newItem2);
-    QTableWidgetItem* newItem3 = new QTableWidgetItem(QString::fromStdString(to_string(m_deletedCellImages.size())));
-    ui.tableWidget_all->setItem(2, 0, newItem3);
+    updateGeneralTable();
     
     if (m_cellImages.size()>0)
     {
@@ -417,6 +424,18 @@ bool WindowMain::getImageToShow(Mat& outImg, string& name, double& scale)
     outImg = outImg.clone();
 }
 
+bool WindowMain::analysisConducted()
+{
+    if (ui.checkBox_roundnessAnalysis->isChecked() || ui.checkBox_pcaAnalysis->isChecked()
+        || ui.checkBox_edgeDetection->isChecked() || ui.checkBox_FAdetection->isChecked())
+    {
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
 
 void WindowMain::on_pushButton_showImage_clicked()
 {
@@ -431,78 +450,114 @@ void WindowMain::on_pushButton_showImage_clicked()
     //load image
     bool successful = getImageToShow(image, name, scale);
     if (!successful) { return; }
+    bool withAnalysis = analysisConducted();
+    
+    if (image.channels() == 1)//this can only be executed for 1 channel images
+    {
+        //thresholdings
+        Mat thresholdedImage = image;
+        thresholdingType threshType = static_cast<thresholdingType>(ui.comboBox_thresholding->currentIndex());
+        displayType dispType = static_cast<displayType>(ui.comboBox_display->currentIndex());
 
-    //thresholdings
-    if (ui.checkBox_thresholdManually->isChecked())
-    {
-        int threshValue = ui.spinBox_thresholdManually->value();
-        successful = help::thresh(image,threshValue);
-        if (successful) { name = name + "_threshManually"+to_string(threshValue); }
-    }
-    else if (ui.checkBox_thresholdOtsu->isChecked())
-    {
-        successful = help::thresh(image);
-        if (successful) { name = name + "_threshOtsu"; }
-    }
-    else if (ui.checkBox_thresholdPCAoptSingle->isChecked())
-    {
-        int optimalThresholding = m_analysis.getOptimalThresholdingForPCA(image, pca_squareLength, pca_minEigvalRatio);
-        successful = help::thresh(image, optimalThresholding);
-        if (successful) { name = name + "_threshPCA"; }
-    }
-    else if (ui.checkBox_thresholdPCAoptSquares->isChecked())
-    {
-        Mat imgThresh;
-        help::pcaType type = help::pcaType::squarePCAoptimizedThresh;
-        m_analysis.getThresholdedImage(image, imgThresh, type, pca_squareLength, pca_minEigvalRatio, 0);
-    }
-
-    if(ui.checkBox_edgeDetection->isChecked())
-    {
-        cv::blur(image, image, Size(3, 3));
-        int kernel_size = 3;
-        int lowThreshold = 50;
-        cv::Canny(image, image, lowThreshold, lowThreshold * 3, kernel_size); //TODO: what is wrong here?
-    }
-    if (ui.checkBox_FAdetection->isChecked())
-    {
-        GaussianBlur(image, image, Size(9, 9), 2, 2);
-        vector<Vec3f> circles;
-        HoughCircles(image, circles, HOUGH_GRADIENT, 2, image.rows / 4, 200, 100);
-        for (size_t i = 0; i < circles.size(); i++)
+        switch (threshType)
         {
-            Point center(cvRound(circles[i][0]), cvRound(circles[i][1]));
-            int radius = cvRound(circles[i][2]);
+        case thresholdingType::manual:
+
+            help::thresh(thresholdedImage, ui.spinBox_thresholdManually->value());
+            name = name + "_threshManually" + to_string(ui.spinBox_thresholdManually->value());
+            break;
+
+        case thresholdingType::otsu:
+            help::thresh(thresholdedImage);
+            name = name + "_threshOtsu";
+            break;
+
+        case thresholdingType::squarePCAoptimizedThresh:
+            m_analysis.getPCAoptThresholdedImage(thresholdedImage, pca_squareLength, pca_minEigvalRatio);
+            name = name + "_threshPCAopt" + "_Length" + to_string(pca_squareLength) + "_minEigRatio" + to_string(pca_minEigvalRatio);
+            break;
+        }
+
+        
+        if ((withAnalysis && dispType == displayType::thresholded) || (!withAnalysis && threshType != thresholdingType::None))
+        {
+            image = thresholdedImage;
+        }
+
+        /*
+        else if (ui.checkBox_thresholdPCAoptSingle->isChecked())
+        {
+            int optimalThresholding = m_analysis.getOptimalThresholdingForPCA(image, pca_squareLength, pca_minEigvalRatio);
+            successful = help::thresh(image, optimalThresholding);
+            if (successful) { name = name + "_threshPCA"; }
+        }
+        */
+
+
+        //apply analysis
+        bool analysisSuccessful = false;
+        if (ui.checkBox_roundnessAnalysis->isChecked())
+        {
+            analysisSuccessful = m_analysis.analyseShape(image);
+            name = name + "_roundAnalysed";
+        }
+        else if (ui.checkBox_pcaAnalysis->isChecked())
+        {
+            vector<double> random;
+            if (threshType == thresholdingType::None) //intensity mode
+            {
+                Mat emptyImg;
+                analysisSuccessful = m_analysis.analyseWithPCA(image, random, pca_squareLength, pca_minEigvalRatio, emptyImg);
+            }
+            else
+            {
+                analysisSuccessful = m_analysis.analyseWithPCA(image, random, pca_squareLength, pca_minEigvalRatio, thresholdedImage);
+            }
+
+            name = name + "_pcaAnalysed";
+        }
+        else if (ui.checkBox_edgeDetection->isChecked())
+        {
             
-            cvtColor(image,image, COLOR_GRAY2RGB);
-            // draw the circle center
-            circle(image, center, 3, Scalar(0, 255, 0), -1, 8, 0);
-            // draw the circle outline
-            circle(image, center, radius, Scalar(0, 0, 255), 3, 8, 0);
+            cv::blur(image, image, Size(3, 3));
+            int kernel_size = 3;
+            int highThreshCanny = ui.spinBox_highThreshCanny->value();
+            cv::Canny(image, image, highThreshCanny/2, highThreshCanny, kernel_size);
+            name = name + "_edge" + "_highthresh" + to_string(highThreshCanny);
+        }
+        else if (ui.checkBox_FAdetection->isChecked())
+        {
+            Mat blurredImage;
+            GaussianBlur(image, blurredImage, Size(9, 9), 2, 2);
+
+            vector<Vec3f> circles;
+            double minDist = ui.spinBox_minDist->value(); //10; //image.rows / 4
+            double highThreshCanny = ui.spinBox_highThreshCanny->value();//150; // 200
+            double minCircleConfidence = ui.doubleSpinBox_circleConfidence->value(); //30;
+            double dp = ui.doubleSpinBox_dpResolution->value();
+            HoughCircles(blurredImage, circles, HOUGH_GRADIENT, dp, minDist, highThreshCanny, minCircleConfidence, 0,10);
+
+            cvtColor(image, image, COLOR_GRAY2RGB);
+
+            for (size_t i = 0; i < circles.size(); i++)
+            {
+                Point center(cvRound(circles[i][0]), cvRound(circles[i][1]));
+                int radius = cvRound(circles[i][2]);
+
+                //cvtColor(image, image, COLOR_GRAY2RGB);
+                // draw the circle center
+                //circle(image, center, 3, Scalar(0, 255, 0), -1, 8, 0);
+                // draw the circle outline
+                circle(image, center, radius, Scalar(0, 0, 255), 1);
+            }
+            name = name + "_circles" + "_highthresh" + to_string(highThreshCanny) + "_minCircleConf" + to_string(minCircleConfidence)
+                +"_minDist" + to_string(minDist) + "_dp" + to_string(dp);
         }
     }
     
-
-    //apply analysis for depiction purposes
-    bool analysisSuccessful = false;
-    if (ui.checkBox_analysed->isChecked())
+    if (!withAnalysis)//TODO: check what happens for unscaled 16 bit image that were analyzed => probs not scaled ;(
     {
-        analysisSuccessful = m_analysis.analyseShape(image);
-        if (analysisSuccessful) { name = name + "_roundAnalysed"; }
-    }
-    else if (ui.checkBox_pcaAnalysis->isChecked())
-    {
-        vector<double> random;
-        analysisSuccessful = m_analysis.analyseWithPCA(image, random, pca_squareLength, pca_minEigvalRatio);
-        if (analysisSuccessful) { name = name + "_pcaAnalysed"; }
-    }
-
-    else //TODO: check what happens for unscaled 16 bit image that were analyzed => probs not scaled ;(
-    {
-        if (!analysisSuccessful)
-        {
-            help::scaleData(image);
-        }
+        help::scaleData(image);
     }
 
     string windowName = replacing ? "Image" : name;
@@ -520,7 +575,24 @@ void WindowMain::on_pushButton_showPlot_clicked()
 
         if (cellNumber>=0 && cellNumber<=ui.spinBox_showImage->maximum()) 
         {
-            plotOccurrenceInData(m_cellImages[cellNumber].actin_fibreAnglesPCA);
+            if (! m_cellImages[cellNumber].actin_fibreAnglesPCA.empty())
+            {
+                plotAngles(m_cellImages[cellNumber].actin_fibreAnglesPCA);
+            }
+            else
+            {
+                Mat image;
+                double randomScale;
+                string randomName;
+                getImageToShow(image, randomName, randomScale);
+                Mat thresholdedImage = image.clone();
+                auto a = ui.spinBox_squareLengthPCA->value();
+                auto b = ui.doubleSpinBox_minEigValRatioPCA->value(); 
+                m_analysis.getPCAoptThresholdedImage(thresholdedImage, ui.spinBox_squareLengthPCA->value(), ui.doubleSpinBox_minEigValRatioPCA->value());
+                vector<double> resultingAngles;
+                m_analysis.analyseWithPCA(image, resultingAngles, ui.spinBox_squareLengthPCA->value(), ui.doubleSpinBox_minEigValRatioPCA->value(), thresholdedImage);
+                plotAngles(resultingAngles);
+            }
         }
     }
     else
