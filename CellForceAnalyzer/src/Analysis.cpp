@@ -9,11 +9,12 @@
 
 #include "CustomImage.h"
 #include "helperFunctions.h"
+#include <cmath>
 
 using namespace std;
 using namespace cv;
 
-
+Analysis::Analysis(ParametersFromUI& parameters) :m_parameters(parameters) {}
 
 void getRadii(vector<Point> contour, Point centroid, vector<Point>& outPoints, double& innerRadius, double& outerRadius)
 {
@@ -232,9 +233,12 @@ vector<double> analyseAreaAndDensity(Mat channel)
 }
 
 
-bool Analysis::pointCloudPCA(const vector<Point>& pts, const int squareLength, vector<Point2d>& eigen_vecs, double minEigVecRatio, shared_ptr<double> eigValRatio )
+bool Analysis::pointCloudPCA(const vector<Point>& pts, vector<Point2d>& eigen_vecs, shared_ptr<double> eigValRatio )
 {
-    if (pts.size() < help::minPercentagePointsPCA * squareLength*squareLength) // at least 7 percent of area should be covered
+    int squareLength = m_parameters.PCAsquareLength;
+    double minEigVecRatio = m_parameters.PCAminEigValRatio;
+
+    if (pts.size() < help::minPercentagePointsPCA * squareLength*squareLength || pts.size() < help::minPointsPCA) // enough white pixels
     {
         return false;
     }
@@ -277,7 +281,7 @@ if (ratio < minEigVecRatio)
 return true;
 }
 
-vector<Point> Analysis::getWhitePointsFromThresholdedImage(Mat img)
+vector<Point> getWhitePointsFromThresholdedImage(Mat img)
 {
     vector<Point> pointCloud;
     for (int i = 0; i < img.rows; i++)
@@ -299,14 +303,14 @@ double getAngleFromVectors(vector<Point2d> vectors)
     double angle = atan2(vectors[0].y, vectors[0].x); // orientation in radians
     angle = angle * (360 / (2 * CV_PI));              // to degrees
     angle = angle * (-1);                             // invert angle so that it is counterclock wise
-    if (angle < -25)                                  // angle goes from -25 deg to 155 deg => so that 0 and 90 deg are depicted well in plot
+    if (angle < (help::startAnglePlot - help::spacingAnglePlot / 2))// angle goes from 15 deg to 180 deg
     {
         angle += 180;
     }
     return angle;
 }
 
-vector<Point> Analysis::getPointsDependingOnIntensityFromImage(Mat img)
+vector<Point> getPointsDependingOnIntensityFromImage(Mat img)
 {
     vector<Point> pointCloud;
     for (int i = 0; i < img.rows; i++)
@@ -341,8 +345,36 @@ bool squareIsNotBackground(Mat img)
     else { return true; }
 }
 
-void Analysis::getPCAoptThresholdedImage(Mat& img, int squareLength, double minEigValRatio)
+void Analysis::edgeDetectionCanny(Mat& image)
 {
+    cv::blur(image, image, Size(3, 3));
+    int kernel_size = 3;
+    cv::Canny(image, image, m_parameters.highThreshCanny / 2, m_parameters.highThreshCanny, kernel_size);
+}
+
+void Analysis::focalAdhesiondetection(Mat& image)
+{
+    Mat blurredImage;
+    GaussianBlur(image, blurredImage, Size(9, 9), 2, 2);
+
+    vector<Vec3f> circles;
+    HoughCircles(blurredImage, circles, HOUGH_GRADIENT, m_parameters.FAdp, m_parameters.FAminDist, 
+        m_parameters.highThreshCanny, m_parameters.FAminCircleConfidence, 0, 10);
+
+    cvtColor(image, image, COLOR_GRAY2RGB);
+
+    for (size_t i = 0; i < circles.size(); i++)
+    {
+        Point center(cvRound(circles[i][0]), cvRound(circles[i][1]));
+        int radius = cvRound(circles[i][2]);
+
+        circle(image, center, radius, Scalar(0, 0, 255), 1);
+    }
+}
+
+void Analysis::getPCAoptThresholdedImage(Mat& img)
+{
+    int squareLength = m_parameters.PCAsquareLength;
     int lengthX = squareLength; //length of mini-squares that are fed into the pca
     int lengthY = squareLength;
 
@@ -371,14 +403,14 @@ void Analysis::getPCAoptThresholdedImage(Mat& img, int squareLength, double minE
                 help::thresh(threshImg, k, false);
                 vector<Point> points = getWhitePointsFromThresholdedImage(threshImg);
                 
-                bool enoughPoints = true; // only one of the conditions from pointCloudPCA function is needed
-                if (points.size() < help::minPercentagePointsPCA * squareLength * squareLength) // at least 7 percent of area should be covered
+                bool enoughPoints = true; // only one of the conditions from pointCloudPCA function is needed: at least X percent of area in white
+                if (points.size() < help::minPercentagePointsPCA * squareLength * squareLength || points.size() < help::minPointsPCA) 
                 {
-                    enoughPoints=false;
+                    enoughPoints = false;
                 }
 
                 std::shared_ptr<double> eigValRatio = std::make_shared<double>(); // shared pointer => optional arguments can not be a reference ;(
-                pointCloudPCA(points, lengthX, eigen_vecs, minEigValRatio, eigValRatio);
+                pointCloudPCA(points, eigen_vecs, eigValRatio);
 
                 if (*eigValRatio > optEigValRatio && enoughPoints && notBackground)
                 {
@@ -386,10 +418,13 @@ void Analysis::getPCAoptThresholdedImage(Mat& img, int squareLength, double minE
                     optimalThresholding = k;
                 }
             }
-
-            if (optEigValRatio < minEigValRatio)
+            //TODO was machsch du da isch optEigVal überhaut existent??
+            if (optEigValRatio < m_parameters.PCAminEigValRatio)
             {
-                //notBackground = false;
+                if (m_parameters.suppressLowEigValRatioSquares)
+                {
+                    notBackground = false;
+                }
             }
 
             if (notBackground == true)
@@ -406,8 +441,9 @@ void Analysis::getPCAoptThresholdedImage(Mat& img, int squareLength, double minE
 }
 
 
-bool Analysis::analyseWithPCA(Mat& img, vector<double>& resultingAngles, int squareLength, double minEigVecRatio, Mat imgThresh)
+bool Analysis::analyseWithPCA(Mat& img, vector<double>& resultingAngles, Mat imgThresh)
 {
+    int squareLength = m_parameters.PCAsquareLength;
     int lengthX = squareLength; //length of mini-squares that are fed into the pca
     int lengthY = squareLength;
     
@@ -445,7 +481,7 @@ bool Analysis::analyseWithPCA(Mat& img, vector<double>& resultingAngles, int squ
             }
             
             vector<Point2d> eigen_vecs(2);
-            bool PCAworked = pointCloudPCA(points, lengthX, eigen_vecs, minEigVecRatio); // TODO: all conditions?
+            bool PCAworked = pointCloudPCA(points, eigen_vecs); // TODO: all conditions?
 
             if (PCAworked && enoughPoints)
             {
@@ -462,36 +498,94 @@ bool Analysis::analyseWithPCA(Mat& img, vector<double>& resultingAngles, int squ
     return true;
 }
 
-/*
-int Analysis::getOptimalThresholdingForPCA(Mat inImg, int squareLength, double minEigVecRatio)
+double Analysis::calculateFiberAlignmentConstant(vector<int> y, double exponent, int mode)
 {
-    int maxArrowsCount = 0;
-    int optimalThresholding;
-
-    if (inImg.channels() == 3) { return 0; }
-    inImg = inImg.clone();
-    // scaled ONCE because thresholdings will be applied later
-    help::scaleData(inImg);
-    if (inImg.depth() == CV_16U) { inImg.convertTo(inImg, CV_8U, 1 / 256.0); }
-
-    for (int i = 10; i < 256; i += 5) //heavy function => thresholds a lot of times!!
+    double result = -1;
+    double yExpSum = 0;
+    double ySum = 0;
+    for (int i = 0; i < y.size(); i++)
     {
-        Mat img = inImg.clone();
-        Mat imgThresh;
-        cv::threshold(img, imgThresh, i, 255, THRESH_BINARY);
-        vector<double> angles;
-        analyseWithPCA(img, angles, squareLength, minEigVecRatio, imgThresh);
+        ySum += y[i];
+        yExpSum += pow(y[i], exponent);
+    }
 
-        int arrowsCount = angles.size();
-        if (arrowsCount > maxArrowsCount)
+    if (mode == 0)
+    {
+        result = yExpSum / pow(ySum, exponent);
+    }
+    if (mode == 1)
+    {
+        result = 1 - pow(ySum, exponent)/(yExpSum*pow(y.size(),exponent-1));
+    }
+    if (mode == 2)
+    {
+        double temp = pow(y.size(), exponent - 1);
+        result = yExpSum / pow(ySum, exponent) * temp / (temp - 1) - 1 / (temp - 1);
+    }
+    
+    return result;
+    //double yAverage = ySum / y.size();
+    //return (y.size() * pow(yAverage, exponent)) / expSum;
+}
+
+vector<double> Analysis::testYvecs(vector<vector<int>> yVecs, double exponent, int mode)
+{
+    vector<double> result;
+    for (int i = 0; i < yVecs.size(); i++)
+    {
+        auto y = yVecs[i];
+        double res = calculateFiberAlignmentConstant(y, exponent, mode);
+        result.push_back(res); 
+    }
+    return result;
+}
+
+
+vector<double> Analysis::createX(vector<double> data1, bool plottingAngles)
+{
+    double start, end, spacing;
+    vector<double> x;
+    if (plottingAngles)
+    {
+        start = help::startAnglePlot;
+        end = 180 + start;
+        spacing = help::spacingAnglePlot;
+    }
+    else
+    {
+        int pltDetail = 12;  
+        double min = *std::min_element(data1.begin(), data1.end());
+        double max = *std::max_element(data1.begin(), data1.end());
+        spacing = (max - min) / pltDetail;
+        start = min - spacing;
+        end = max + spacing;
+    }
+
+    for (double i = start; i < end; i += spacing)
+    {
+        x.push_back(i);
+    }
+    return x;
+}
+
+vector<int> Analysis::createY(vector<double> data, vector<double> x)
+{
+    std::vector<int> y(x.size());
+    double spacing = x[1] - x[0];
+
+    for (int i = 0; i < data.size(); i++)
+    {
+        for (int j = 0; j < x.size(); j++)
         {
-            maxArrowsCount = arrowsCount;
-            optimalThresholding = i;
+            if (data[i] >= x[j] - spacing / 2 && data[i] < x[j] + spacing / 2)
+            {
+                y[j]++;
+            }
         }
     }
-    return optimalThresholding;
+    return y;
 }
-*/
+
 // falls altered => cell info müsste als resultVector zurück gebeben
 //TODO introduced worked
 void Analysis::analyseActin(Cell& cell)
@@ -517,14 +611,21 @@ void Analysis::analyseActin(Cell& cell)
 
     vector<Point> points = getWhitePointsFromThresholdedImage(actinThresh);
     vector<Point2d> eigen_vecs(2);
-    double unnec = 0;
-    bool worked = pointCloudPCA(points, actin.cols, eigen_vecs,unnec); //TOCHANGE
+
+    bool worked = pointCloudPCA(points, eigen_vecs); //TOCHANGE
     double mainAngle = getAngleFromVectors(eigen_vecs);
     cell.actin_mainAngle = mainAngle;
 
-    vector<double> angles;
-    //analyseWithPCA(actin, angles); TODO: change
-    cell.actin_fibreAnglesPCA = angles;
+    vector<double> fiberAngles;
+    Mat optThresholdedActin = actin.clone();
+    getPCAoptThresholdedImage(optThresholdedActin);
+    analyseWithPCA(actin, fiberAngles, optThresholdedActin); //changes pic!!
+    cell.actin_fibreAnglesPCA = fiberAngles;
+
+    double spacing;
+    vector<double> x = createX(fiberAngles,true);
+    vector<int> yFiberAngles = createY(fiberAngles,x);
+    cell.actin_fiberAlignment = calculateFiberAlignmentConstant(yFiberAngles,3,1);
 }
 
 // function used for depiction in show image function, draws centroid, inner & outer radii,...
@@ -551,8 +652,7 @@ bool Analysis::analyseShape(Mat& img)
 
     vector<Point> points = getWhitePointsFromThresholdedImage(imgThresh);
     vector<Point2d> eigen_vecs(2);
-    double hi;
-    bool worked = pointCloudPCA(points, img.cols, eigen_vecs,hi); //TOCHANGE
+    bool worked = pointCloudPCA(points, eigen_vecs); //TOCHANGE
     Point ctr = Point(img.cols / 2, img.rows / 2);
 
     help::scaleData(img);
@@ -574,7 +674,7 @@ bool Analysis::analyseShape(Mat& img)
 // TODO: fitEllipse() => approximates ellipse into shape and returns rectangle => could be better than inner/outer radii
 // 
 // function used to get circularity and roundness for every cell
-void Analysis::analyseNucleus(Cell& cell)
+void analyseNucleus(Cell& cell)
 {
     Mat nucleusThresh = cell.m_nucleusChannel;
     help::thresh(nucleusThresh);
@@ -602,7 +702,7 @@ void Analysis::analyseNucleus(Cell& cell)
     cell.nucleus_area = area;
 }
 
-void Analysis::analyseYap(Cell& cell)
+void analyseYap(Cell& cell)
 {
     double yapInNucleus = analyzePercentageInNucleus(cell.m_yapChannel, cell.m_nucleusChannel);
     cell.yap_inNucleus = yapInNucleus;
@@ -666,3 +766,24 @@ bool Analysis::isDeadCell(Cell cell)
     return false;
 }
 
+void Analysis::analyseCell(Cell& cell, std::vector<channelType> channels)
+{
+    bool hasNucleus, hasActin, hasYap;
+    hasNucleus = std::count(channels.begin(), channels.end(), channelType::nucleus);
+    hasActin = std::count(channels.begin(), channels.end(), channelType::actin);
+    hasYap = std::count(channels.begin(), channels.end(), channelType::yap);
+    if (hasNucleus)
+    {
+        analyseNucleus(cell);
+    }
+    if (hasActin)
+    {
+        analyseActin(cell);
+    }
+    if (hasYap&&hasNucleus)
+    {
+        analyseYap(cell);
+    }
+    
+    
+}

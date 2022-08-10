@@ -128,25 +128,6 @@ CustomImage::CustomImage(vector<Mat> images, vector<channelType> channels,string
 	}
 }
 
-void CustomImage::threshold()
-{
-	m_name = m_name + "_thresholded";
-	help::thresh(m_brightfieldChannel);
-	help::thresh(m_nucleusChannel);
-	help::thresh(m_vinculinChannel);
-	help::thresh(m_yapChannel);
-	help::thresh(m_actinChannel);
-}
-
-// Not used at the moment  => delete later??
-CustomImage CustomImage::getThresholdedImage()
-{
-	CustomImage temp(*this);
-	temp.threshold();
-	return temp;
-}
-
-
 CustomImage CustomImage::cutImageOut(const Rect& box,string inName)
 {
 	CustomImage boxImage;

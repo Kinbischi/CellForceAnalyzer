@@ -16,7 +16,7 @@ using namespace cv;
 namespace fs = std::filesystem;
 
 // if there is numbers in the start of the image => can happen that images are not loaded in the same order as in the windows folder
-void Preprocess::loadImages(std::vector<CustomImage>& images, string inpDir, std::vector<channelType> channelsOrder)
+void Preprocess::loadImages(vector<CustomImage>& images, string inpDir, vector<channelType> channelsOrder)
 {
     fs::path inPath = inpDir;
     vector<Mat> matImages;
@@ -59,6 +59,93 @@ void Preprocess::loadImages(std::vector<CustomImage>& images, string inpDir, std
         }
         i++;
     }
+}
+
+vector<channelType> Preprocess::loadNiceCellImages(vector<CustomImage>& arrayImages,vector<Cell>& cellImages, string inpDir)
+{
+    vector<string> imageNames;
+    vector<vector<Rect>> rectangles;
+    vector<vector<channelType>> channels;
+
+    //Oksana's cell
+    vector<channelType> channelsOrder1;
+    channelsOrder1.push_back(channelType::nucleus);
+    channelsOrder1.push_back(channelType::actin);
+    channelsOrder1.push_back(channelType::brightfield);
+
+    imageNames.push_back("50x50_niches_RGD_3mM_2022_02_22__14_11_14_Maximum intensity projection_Filter.tif");
+    vector<Rect> rVec;
+    rVec.push_back(Rect(220, 400, 300, 300));
+    rectangles.push_back(rVec);
+    rVec.clear();
+    channels.push_back(channelsOrder1);
+
+    //Leslie's cells
+    vector<channelType> channelsOrder2;
+    channelsOrder2.push_back(channelType::nucleus);
+    channelsOrder2.push_back(channelType::brightfield);
+    channelsOrder2.push_back(channelType::actin);
+
+    imageNames.push_back("300321_PEGvsGELMAlif.lif - Image006-1 (RGB).tif");
+    rVec.push_back(Rect(1135, 1200, 270, 480));
+    rVec.push_back(Rect(140, 1180, 340, 340));
+    rVec.push_back(Rect(1250, 200, 750, 250));
+    rVec.push_back(Rect(880, 1630, 350, 250));
+    rectangles.push_back(rVec);
+    rVec.clear();
+    channels.push_back(channelsOrder2);
+
+    imageNames.push_back("300321_PEGvsGELMAlif.lif - Image001-1 (RGB).tif");
+
+    rVec.push_back(Rect(1020, 420, 300, 250));
+    rVec.push_back(Rect(10, 1240, 270, 490));
+    rVec.push_back(Rect(840, 1080, 270, 260));
+    rVec.push_back(Rect(1640, 1130, 310, 240));
+    rVec.push_back(Rect(1280, 1090, 220, 310));
+    rVec.push_back(Rect(200, 1150, 330, 200));
+    rectangles.push_back(rVec);
+    rVec.clear();
+    channels.push_back(channelsOrder2);
+
+    imageNames.push_back("300321_PEGvsGELMAlif.lif - Image003-1 (RGB).tif");
+    rVec.push_back(Rect(330, 600, 280, 350));
+    rVec.push_back(Rect(910, 790, 190, 460));
+    rectangles.push_back(rVec);
+    rVec.clear();
+    channels.push_back(channelsOrder2);
+
+    imageNames.push_back("300321_PEGvsGELMAlif.lif - Image004 (RGB).tif");
+    rVec.push_back(Rect(1300, 780, 500, 620));
+    rectangles.push_back(rVec);
+    rVec.clear();
+    channels.push_back(channelsOrder2);
+
+    for (int i = 0; i < imageNames.size(); i++)
+    {
+        Mat img = imread(inpDir + imageNames[i], IMREAD_UNCHANGED);
+
+        Mat bgr[3];
+        split(img, bgr);
+        vector<Mat> matImages;
+        matImages.push_back(bgr[0]);
+        matImages.push_back(bgr[1]);
+        matImages.push_back(bgr[2]);
+        CustomImage image(matImages, channels[i], imageNames[i]);
+        arrayImages.push_back(image);
+
+        for (int j = 0; j < rectangles[i].size(); j++)
+        {
+            if (imageNames[i].find(".tif") != std::string::npos)
+            {
+                imageNames[i].erase(imageNames[i].find(".tif"));
+            }
+            string name_cell = imageNames[i] + "_cell" + to_string(j);
+            CustomImage ce = image.cutImageOut(rectangles[i][j], name_cell);
+            Cell cell(ce);
+            cellImages.push_back(cell);
+        }
+    }
+    return channelsOrder2;
 }
 
 void Preprocess::applyYolo(std::vector<CustomImage>& arrayImages, vector<Cell>& cellImages, vector<Mat>& arrayImages_withYoloBoxes, float confThreshold)
@@ -106,7 +193,7 @@ double findDataPointWithMostNeighbours(vector<double> input, double margin)
 Cell Preprocess::getAverageProperties(const vector<Cell> cells)
 {
     double summedNucleusArea = 0, summedNucleusCircularity = 0, summedNucleusRoundness = 0, summedActinArea = 0, summedActinDensity = 0,
-        summedActinMaxLength = 0, summedYapInNucleus = 0;
+        summedActinMaxLength = 0, summedYapInNucleus = 0, summedActinFiberAlignment = 0;
     vector<double> actinPCAangles;
     Cell averageAllCells;
     for (auto cell : cells)
@@ -121,6 +208,7 @@ Cell Preprocess::getAverageProperties(const vector<Cell> cells)
         actinPCAangles.push_back(cell.actin_mainAngle);
 
         summedYapInNucleus += cell.yap_inNucleus;
+        summedActinFiberAlignment += cell.actin_fiberAlignment;
     }
 
     averageAllCells.nucleus_area = summedNucleusArea / cells.size();
@@ -131,6 +219,7 @@ Cell Preprocess::getAverageProperties(const vector<Cell> cells)
     averageAllCells.actin_maxLength = summedActinMaxLength / cells.size();
     if (!actinPCAangles.empty()) { averageAllCells.actin_mainAngle = static_cast<int>(findDataPointWithMostNeighbours(actinPCAangles, 10)); }
     averageAllCells.yap_inNucleus = summedYapInNucleus / cells.size();
+    averageAllCells.actin_fiberAlignment = summedActinFiberAlignment / cells.size();
 
     return averageAllCells;
 }

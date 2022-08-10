@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>743</width>
-    <height>804</height>
+    <height>806</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -143,6 +143,13 @@
           </layout>
          </item>
          <item>
+          <widget class="Line" name="line">
+           <property name="orientation">
+            <enum>Qt::Vertical</enum>
+           </property>
+          </widget>
+         </item>
+         <item>
           <layout class="QVBoxLayout" name="verticalLayout_5">
            <item>
             <layout class="QHBoxLayout" name="horizontalLayout_2">
@@ -254,7 +261,7 @@
        </sizepolicy>
       </property>
       <property name="title">
-       <string>Analysis</string>
+       <string>Analysis and Depiction</string>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_6">
        <item>
@@ -419,6 +426,13 @@
           </layout>
          </item>
          <item>
+          <widget class="QLabel" name="label_12">
+           <property name="text">
+            <string>Analysis methods:</string>
+           </property>
+          </widget>
+         </item>
+         <item>
           <layout class="QHBoxLayout" name="horizontalLayout_16">
            <property name="topMargin">
             <number>0</number>
@@ -485,13 +499,6 @@
          </item>
          <item>
           <layout class="QHBoxLayout" name="horizontalLayout_15">
-           <item>
-            <widget class="QLabel" name="label_12">
-             <property name="text">
-              <string>Analysis methods::</string>
-             </property>
-            </widget>
-           </item>
            <item>
             <widget class="QCheckBox" name="checkBox_roundnessAnalysis">
              <property name="text">
@@ -671,7 +678,7 @@
            <item>
             <widget class="QSpinBox" name="spinBox_squareLengthPCA">
              <property name="value">
-              <number>15</number>
+              <number>8</number>
              </property>
             </widget>
            </item>
@@ -684,11 +691,21 @@
            </item>
            <item>
             <widget class="QDoubleSpinBox" name="doubleSpinBox_minEigValRatioPCA">
+             <property name="maximum">
+              <double>999.990000000000009</double>
+             </property>
              <property name="singleStep">
               <double>0.100000000000000</double>
              </property>
              <property name="value">
-              <double>1.500000000000000</double>
+              <double>7.000000000000000</double>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QCheckBox" name="checkBox_suppressLowEigValRatioSquares">
+             <property name="text">
+              <string>suppress low ratio squares</string>
              </property>
             </widget>
            </item>
@@ -738,7 +755,7 @@
               <double>10.000000000000000</double>
              </property>
              <property name="value">
-              <double>-1.000000000000000</double>
+              <double>2.000000000000000</double>
              </property>
             </widget>
            </item>
@@ -755,7 +772,7 @@
            <item>
             <widget class="QLabel" name="label_15">
              <property name="text">
-              <string>Analysis on:</string>
+              <string>Show on:</string>
              </property>
             </widget>
            </item>
@@ -822,7 +839,17 @@
              </property>
              <item>
               <property name="text">
-               <string>Actin Fibers (of Cell)</string>
+               <string>Actin Fibers OptThresh (single Cell)</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Actin Fibers Intensity (single Cell)</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Actin Fibers BothMethods (single Cell)</string>
               </property>
              </item>
              <item>
@@ -838,11 +865,6 @@
              <item>
               <property name="text">
                <string>Nucleus Roundness</string>
-              </property>
-             </item>
-             <item>
-              <property name="text">
-               <string>Yap in Nucleus</string>
               </property>
              </item>
              <item>
@@ -865,6 +887,11 @@
                <string>Actin Main Angle</string>
               </property>
              </item>
+             <item>
+              <property name="text">
+               <string>Yap in Nucleus</string>
+              </property>
+             </item>
             </widget>
            </item>
            <item>
@@ -882,20 +909,110 @@
            </item>
           </layout>
          </item>
+         <item>
+          <layout class="QHBoxLayout" name="horizontalLayout_17">
+           <item>
+            <widget class="QPushButton" name="pushButton_conductAnalysisOnAllCells">
+             <property name="text">
+              <string>Conduct Analysis on all Cells</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="pushButton_conductAnalysisOnSingleCell">
+             <property name="text">
+              <string>Conduct Analysis on single Cell</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="pushButton_test">
+             <property name="text">
+              <string>Test</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
         </layout>
-       </item>
-       <item>
-        <widget class="QPushButton" name="pushButton_test">
-         <property name="text">
-          <string>Test</string>
-         </property>
-        </widget>
        </item>
       </layout>
      </widget>
     </item>
     <item>
      <layout class="QGridLayout" name="gridLayout">
+      <property name="leftMargin">
+       <number>0</number>
+      </property>
+      <property name="rightMargin">
+       <number>0</number>
+      </property>
+      <property name="horizontalSpacing">
+       <number>7</number>
+      </property>
+      <item row="0" column="1">
+       <widget class="QLabel" name="label_8">
+        <property name="text">
+         <string>Analysis of the selected cell</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QTableWidget" name="tableWidget_cell">
+        <property name="columnCount">
+         <number>1</number>
+        </property>
+        <attribute name="horizontalHeaderVisible">
+         <bool>false</bool>
+        </attribute>
+        <row>
+         <property name="text">
+          <string>Nucleus Area</string>
+         </property>
+        </row>
+        <row>
+         <property name="text">
+          <string>Nucleus Circularity</string>
+         </property>
+        </row>
+        <row>
+         <property name="text">
+          <string>Nucleus Roundness</string>
+         </property>
+        </row>
+        <row>
+         <property name="text">
+          <string>Actin Area</string>
+         </property>
+        </row>
+        <row>
+         <property name="text">
+          <string>Actin Density</string>
+         </property>
+        </row>
+        <row>
+         <property name="text">
+          <string>Fiber Alignment</string>
+         </property>
+        </row>
+        <row>
+         <property name="text">
+          <string>Yap in Nucleus</string>
+         </property>
+        </row>
+        <row>
+         <property name="text">
+          <string>Actin Main Angle</string>
+         </property>
+        </row>
+        <column/>
+        <item row="7" column="0">
+         <property name="text">
+          <string/>
+         </property>
+        </item>
+       </widget>
+      </item>
       <item row="1" column="0">
        <widget class="QTableWidget" name="tableWidget_all">
         <property name="sizePolicy">
@@ -906,13 +1023,13 @@
         </property>
         <property name="minimumSize">
          <size>
-          <width>300</width>
+          <width>370</width>
           <height>200</height>
          </size>
         </property>
         <property name="maximumSize">
          <size>
-          <width>300</width>
+          <width>400</width>
           <height>400</height>
          </size>
         </property>
@@ -939,80 +1056,57 @@
         </row>
         <row>
          <property name="text">
-          <string>Average Circularity</string>
+          <string/>
          </property>
         </row>
         <row>
          <property name="text">
-          <string>Average Roundness</string>
+          <string>Average Nucleus Area</string>
+         </property>
+        </row>
+        <row>
+         <property name="text">
+          <string>Average Nucleus Circularity</string>
+         </property>
+        </row>
+        <row>
+         <property name="text">
+          <string>Average Nucleus Roundness</string>
+         </property>
+        </row>
+        <row>
+         <property name="text">
+          <string>Average Actin Area</string>
+         </property>
+        </row>
+        <row>
+         <property name="text">
+          <string>Average Actin Density</string>
+         </property>
+        </row>
+        <row>
+         <property name="text">
+          <string>Average Fiber Alignment</string>
+         </property>
+        </row>
+        <row>
+         <property name="text">
+          <string>Average Yap in Nucleus</string>
+         </property>
+        </row>
+        <row>
+         <property name="text">
+          <string>Average Actin Main Angle</string>
          </property>
         </row>
         <column/>
-       </widget>
-      </item>
-      <item row="0" column="1">
-       <widget class="QLabel" name="label_8">
-        <property name="text">
-         <string>Selected Cell Analysis</string>
-        </property>
        </widget>
       </item>
       <item row="0" column="0">
        <widget class="QLabel" name="label_7">
         <property name="text">
-         <string>Entire Dataset Analysis</string>
+         <string>Analysis of the entire data set</string>
         </property>
-       </widget>
-      </item>
-      <item row="1" column="1">
-       <widget class="QTableWidget" name="tableWidget_cell">
-        <property name="columnCount">
-         <number>1</number>
-        </property>
-        <attribute name="horizontalHeaderVisible">
-         <bool>false</bool>
-        </attribute>
-        <row>
-         <property name="text">
-          <string>Circularity</string>
-         </property>
-        </row>
-        <row>
-         <property name="text">
-          <string>Roundness</string>
-         </property>
-        </row>
-        <row>
-         <property name="text">
-          <string>Nucleus Area</string>
-         </property>
-        </row>
-        <row>
-         <property name="text">
-          <string>Yap in Nucleus</string>
-         </property>
-        </row>
-        <row>
-         <property name="text">
-          <string>Actin Density</string>
-         </property>
-        </row>
-        <row>
-         <property name="text">
-          <string>Actin Area</string>
-         </property>
-        </row>
-        <row>
-         <property name="text">
-          <string>Actin Main Angle</string>
-         </property>
-        </row>
-        <column/>
-        <item row="6" column="0">
-         <property name="text">
-          <string/>
-         </property>
-        </item>
        </widget>
       </item>
      </layout>

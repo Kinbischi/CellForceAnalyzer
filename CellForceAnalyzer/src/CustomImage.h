@@ -26,9 +26,6 @@ public:
 	CustomImage cutImageOut(const cv::Rect&, std::string);
 	cv::Mat createRGBimage();
 
-	void CustomImage::threshold();
-	CustomImage getThresholdedImage();
-
 	static const int max8bit = 255;
 	static const int max16bit = 65535;
 

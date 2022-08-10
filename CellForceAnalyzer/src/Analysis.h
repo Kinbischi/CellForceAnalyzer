@@ -2,28 +2,37 @@
 
 
 #include "Cell.h"
+#include "ParametersFromUI.h"
 #include "helperFunctions.h"
 
 class Analysis
 {
 
 public:
+	Analysis(ParametersFromUI&);
 
-	void analyseNucleus(Cell&);
-	void analyseYap(Cell&);
-	void analyseActin(Cell&);
+	void analyseCell(Cell&, std::vector<channelType>);
 
 	bool isDeadCell(Cell);
 	bool analyseShape(cv::Mat&);
 
-	bool pointCloudPCA(const std::vector<cv::Point>&, const int, std::vector<cv::Point2d>&, double = 1.5, std::shared_ptr<double> = nullptr);
-	bool analyseWithPCA(cv::Mat&, std::vector<double>&, int, double, cv::Mat = cv::Mat());
+	void edgeDetectionCanny(cv::Mat&);
+	void focalAdhesiondetection(cv::Mat&);
 
-	void getPCAoptThresholdedImage(cv::Mat&, int, double);
-	int getOptimalThresholdingForPCA(cv::Mat, int, double);
+	bool pointCloudPCA(const std::vector<cv::Point>&, std::vector<cv::Point2d>&, std::shared_ptr<double> = nullptr);
+	bool analyseWithPCA(cv::Mat&, std::vector<double>&, cv::Mat = cv::Mat());
 
-	std::vector<cv::Point> getWhitePointsFromThresholdedImage(cv::Mat);
-	std::vector<cv::Point> getPointsDependingOnIntensityFromImage(cv::Mat);
+	std::vector<int> createY(std::vector<double>, std::vector<double>);
+	std::vector<double> createX(std::vector<double>, bool);
 
+	void getPCAoptThresholdedImage(cv::Mat&);
+	double calculateFiberAlignmentConstant(std::vector<int>, double,int);
+	std::vector<double> Analysis::testYvecs(std::vector<std::vector<int>>, double, int);
+
+private:
+
+	void analyseActin(Cell&);
+
+	ParametersFromUI& m_parameters;
 };
 

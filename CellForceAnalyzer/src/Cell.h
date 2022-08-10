@@ -1,7 +1,9 @@
 #pragma once
 #include "CustomImage.h"
+#include <string>
 
-enum class plotType { actFibers, nuclArea, nuclCircularity, nuclRoundness, yapInNucleus, actArea, actDensity, actMaxLength, actMainAngle};
+enum class plotFeatureType { actFibersOptThresh, actFibersIntensity, actFibersBoth, 
+    nuclArea, nuclCircularity, nuclRoundness, actArea, actDensity, actMaxLength, actMainAngle, yapInNucleus};
 
 class Cell :
     public CustomImage
@@ -10,7 +12,11 @@ public:
     Cell(CustomImage&);
     Cell() = default;
 
-    double getQuantity(plotType);
+    double getQuantity(plotFeatureType);
+    static std::string getPlotTitle(plotFeatureType);
+    static std::string getPlotXLabel(plotFeatureType);
+    static std::string getPlotYLabel(plotFeatureType);
+    static std::vector<std::string> getPlotLegendNames(plotFeatureType);
 
     int nucleus_area;
     double nucleus_circularity;
@@ -23,6 +29,7 @@ public:
     double actin_maxLength;
     std::vector<double> actin_fibreAnglesPCA; // in degree from 0 to 180 counterclockwise (starting from the right/ x axis)
     double actin_mainAngle;
+    double actin_fiberAlignment;
 
 };
 

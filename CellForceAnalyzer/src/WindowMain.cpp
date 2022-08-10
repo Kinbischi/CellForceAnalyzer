@@ -27,7 +27,7 @@ namespace plt = matplotlibcpp;
 #endif
 
 WindowMain::WindowMain(QWidget *parent)
-    : QMainWindow(parent)
+    : QMainWindow(parent),m_analysis(m_params)
 {
     ui.setupUi(this);
 
@@ -41,6 +41,34 @@ WindowMain::WindowMain(QWidget *parent)
     //it grabs the channels (order of input channels) as default values from the .ui file
     WindowChannels channelsWindow;
     m_channels = channelsWindow.set_ChannelTypes();
+    
+}
+
+void WindowMain::updateParameters()
+{
+    m_params.showNumber = ui.spinBox_showImage->value();
+
+    m_params.threshType = static_cast<thresholdingType>(ui.comboBox_thresholding->currentIndex());
+    m_params.dispType = static_cast<displayType>(ui.comboBox_display->currentIndex());
+    m_params.plotFeatType = static_cast<plotFeatureType>(ui.comboBox_showPlot->currentIndex());
+
+    //PCA parameters
+    m_params.PCAsquareLength = ui.spinBox_squareLengthPCA->value();
+    m_params.PCAminEigValRatio = ui.doubleSpinBox_minEigValRatioPCA->value();
+    m_params.suppressLowEigValRatioSquares = ui.checkBox_suppressLowEigValRatioSquares->isChecked();
+
+    //Focal adhesion detection parameters
+    m_params.highThreshCanny = ui.spinBox_highThreshCanny->value();
+    m_params.FAminDist = ui.spinBox_minDist->value();
+    m_params.FAminCircleConfidence = ui.doubleSpinBox_circleConfidence->value();
+    m_params.FAdp = ui.doubleSpinBox_dpResolution->value();
+    
+    if (ui.checkBox_roundnessAnalysis->isChecked() || ui.checkBox_pcaAnalysis->isChecked() 
+        || ui.checkBox_edgeDetection->isChecked() || ui.checkBox_FAdetection->isChecked())
+    { m_params.withAnalysis = true; }
+    else 
+    { m_params.withAnalysis = false; }
+
 }
 
 void WindowMain::imageNumberChanged(int index)
@@ -50,7 +78,7 @@ void WindowMain::imageNumberChanged(int index)
     {
         if (!m_cellImages.empty())
         {
-            setCellTable(m_cellImages[index]);
+            updateCellAnalysisTable(m_cellImages[index]);
         }
     }
 }
@@ -71,7 +99,7 @@ void WindowMain::radioButtonCellsChanged(bool index)
     {
         if (m_cellImages.empty()) { ui.spinBox_showImage->setMaximum(0); }
         else { ui.spinBox_showImage->setMaximum(m_cellImages.size() - 1);
-            setCellTable(m_cellImages[m_imageNumber_show]); }
+            updateCellAnalysisTable(m_cellImages[m_imageNumber_show]); }
     }
 }
 
@@ -85,26 +113,6 @@ void WindowMain::radioButtonDeletedCellsChanged(bool index)
     }
 }
 
-void WindowMain::setCellTable(Cell cell)
-{
-    // no delete is needed, as the QTableWidget takes ownership of the QTableWidgetItem and automized deletion
-    QTableWidgetItem* newItem;
-    newItem = new QTableWidgetItem(QString::fromStdString(to_string(cell.nucleus_circularity)));
-    ui.tableWidget_cell->setItem(0, 0, newItem);
-    newItem = new QTableWidgetItem(QString::fromStdString(to_string(cell.nucleus_roundness)));
-    ui.tableWidget_cell->setItem(1, 0, newItem);
-    newItem = new QTableWidgetItem(QString::fromStdString(to_string(cell.nucleus_area)));
-    ui.tableWidget_cell->setItem(2, 0, newItem);
-    newItem = new QTableWidgetItem(QString::fromStdString(to_string(100*cell.yap_inNucleus)+" %"));
-    ui.tableWidget_cell->setItem(3, 0, newItem);
-    newItem = new QTableWidgetItem(QString::fromStdString(to_string(cell.actin_density)));
-    ui.tableWidget_cell->setItem(4, 0, newItem);
-    newItem = new QTableWidgetItem(QString::fromStdString(to_string(cell.actin_area)));
-    ui.tableWidget_cell->setItem(5, 0, newItem);
-    newItem = new QTableWidgetItem(QString::fromStdString(to_string(cell.actin_mainAngle)));
-    ui.tableWidget_cell->setItem(6, 0, newItem);
-}
-
 void WindowMain::updateGeneralTable()
 {
     QTableWidgetItem* newItem = new QTableWidgetItem(QString::fromStdString(to_string(m_arrayImages.size())));
@@ -114,6 +122,50 @@ void WindowMain::updateGeneralTable()
     QTableWidgetItem* newItem3 = new QTableWidgetItem(QString::fromStdString(to_string(m_deletedCellImages.size())));
     ui.tableWidget_all->setItem(2, 0, newItem3);
 }
+
+void WindowMain::updateCellAnalysisTable(Cell cell)
+{
+    // no delete is needed, as the QTableWidget takes ownership of the QTableWidgetItem and automized deletion
+    QTableWidgetItem* newItem;
+    newItem = new QTableWidgetItem(QString::fromStdString(to_string(cell.nucleus_area)));
+    ui.tableWidget_cell->setItem(0, 0, newItem);
+    newItem = new QTableWidgetItem(QString::fromStdString(to_string(cell.nucleus_circularity)));
+    ui.tableWidget_cell->setItem(1, 0, newItem);
+    newItem = new QTableWidgetItem(QString::fromStdString(to_string(cell.nucleus_roundness)));
+    ui.tableWidget_cell->setItem(2, 0, newItem);
+    newItem = new QTableWidgetItem(QString::fromStdString(to_string(cell.actin_area)));
+    ui.tableWidget_cell->setItem(3, 0, newItem);
+    newItem = new QTableWidgetItem(QString::fromStdString(to_string(cell.actin_density)));
+    ui.tableWidget_cell->setItem(4, 0, newItem);
+    newItem = new QTableWidgetItem(QString::fromStdString(to_string(cell.actin_fiberAlignment)));
+    ui.tableWidget_cell->setItem(5, 0, newItem);
+    newItem = new QTableWidgetItem(QString::fromStdString(to_string(100*cell.yap_inNucleus)+" %"));
+    ui.tableWidget_cell->setItem(6, 0, newItem);
+    newItem = new QTableWidgetItem(QString::fromStdString(to_string(cell.actin_mainAngle)));
+    ui.tableWidget_cell->setItem(7, 0, newItem);
+}
+
+void WindowMain::updateGeneralAnalysisTable()
+{
+    QTableWidgetItem* newItem;
+    newItem = new QTableWidgetItem(QString::fromStdString(to_string(m_averageAllCells.nucleus_area)));
+    ui.tableWidget_all->setItem(4, 0, newItem);
+    newItem = new QTableWidgetItem(QString::fromStdString(to_string(m_averageAllCells.nucleus_circularity)));
+    ui.tableWidget_all->setItem(5, 0, newItem);
+    newItem = new QTableWidgetItem(QString::fromStdString(to_string(m_averageAllCells.nucleus_roundness)));
+    ui.tableWidget_all->setItem(6, 0, newItem);
+    newItem = new QTableWidgetItem(QString::fromStdString(to_string(m_averageAllCells.actin_area)));
+    ui.tableWidget_all->setItem(7, 0, newItem);
+    newItem = new QTableWidgetItem(QString::fromStdString(to_string(m_averageAllCells.actin_density)));
+    ui.tableWidget_all->setItem(8, 0, newItem);
+    newItem = new QTableWidgetItem(QString::fromStdString(to_string(m_averageAllCells.actin_fiberAlignment)));
+    ui.tableWidget_all->setItem(9, 0, newItem);
+    newItem = new QTableWidgetItem(QString::fromStdString(to_string(m_averageAllCells.yap_inNucleus)));
+    ui.tableWidget_all->setItem(10, 0, newItem);
+    newItem = new QTableWidgetItem(QString::fromStdString(to_string(m_averageAllCells.actin_mainAngle)));
+    ui.tableWidget_all->setItem(11, 0, newItem);
+}
+
 
 void WindowMain::on_pushButton_channels_clicked()
 {
@@ -126,182 +178,130 @@ void WindowMain::on_pushButton_channels_clicked()
     }
 }
 
-void plotOccurrenceInData(vector<double> data)
+
+//TODO:
+// set standard square size
+void WindowMain::plotData(vector<double> data1, bool plottingAngles, vector<double> data2)
 {
-    double min = *min_element(data.begin(), data.end());
-    double max = *max_element(data.begin(), data.end());
+    vector<double> x = m_analysis.createX(data1, plottingAngles);
+    vector<int> y1 = m_analysis.createY(data1, x);
 
-    int plottingNumb = 12;
-    double spacing = (max-min)/plottingNumb;
-    double start = min - spacing;
-    double end = max + spacing;
-
-    vector<double> x;
-    for (double i = start; i <= end; i = i + spacing)
-    {
-        x.push_back(i);
-    }
-
-    std::vector<int> y(x.size());
-    for (int i = 0; i < data.size(); i++)
-    {
-        for (int j = 0; j < x.size(); j++)
-        {
-            if (data[i] >= x[j] - spacing / 2 && data[i] < x[j] + spacing / 2)
-            {
-                y[j]++;
-            }
-        }
-    }
     #ifndef _DEBUG
-    plt::plot(x, y);
+    plt::figure();
+
+    int ylimMax = *max_element(y1.begin(), y1.end());
+
+    vector<string> labels = Cell::getPlotLegendNames(m_params.plotFeatType);
+
+    plt::plot(x, y1, { {"marker", "o"}, {"linestyle", "--"}, {"label", labels[0]} });
+    if (!data2.empty())
+    {
+        vector<int> y2 = m_analysis.createY(data2, x);
+        int ylimMax2 = *max_element(y2.begin(), y2.end());
+        if (ylimMax2 > ylimMax) { ylimMax = ylimMax2; }
+        plt::plot(x, y2, { {"marker", "o"}, {"linestyle", "--"}, {"label", labels[1]} });
+        plt::legend();
+    }
+    ylimMax = ylimMax + std::ceil(0.08 * ylimMax);
+    plt::ylim(0,ylimMax);
+
+    plt::xlabel(Cell::getPlotXLabel(m_params.plotFeatType));
+    plt::ylabel(Cell::getPlotYLabel(m_params.plotFeatType));
+    plt::title(Cell::getPlotTitle(m_params.plotFeatType));
     plt::show();
     #endif
 }
 
-void plotAngles(vector<double> angles)
+#ifndef _DEBUG
+void plotSomething(vector<double> x, vector<double> y,plotFeatureType pltType,string title)
 {
-    vector<int> x;
-    double start = -15;
-    double end = 180 + start;
-    double spacing = 15;
-    for (int i=start; i<end; i=i+spacing)
-    {
-        x.push_back(i);
-    }
+    plt::figure();
 
-    std::vector<int> y(x.size());
-    for (int i = 0;i<angles.size();i++)
-    {
-        for (int j = 0; j < x.size(); j++)
-        {
-            if (angles[i]>=x[j]-spacing/2 && angles[i]<x[j]+spacing/2)
-            {
-                y[j]++;
-            }
-        }
-    }
+    plt::plot(x, y, { {"marker", "o"}, {"linestyle", "--"} });
 
-    #ifndef _DEBUG
-    plt::plot(x, y);
+    plt::xlabel(Cell::getPlotXLabel(pltType));   
+    plt::ylabel(Cell::getPlotYLabel(pltType));
+    plt::ylim(0, 10);
+    plt::title(title);
+    //plt::savefig(title +".pdf");
     plt::show();
-    #endif
 }
-
-void plotDistribution(vector<Cell> cells, int type)
-{
-    vector<int> y;
-    for (int i = 0; i < cells.size(); i++)
-    {
-        y.push_back(cells[i].nucleus_area);
-    }
-}
-
-void WindowMain::loadNiceCellImages()
-{
-    vector<string> imageNames;
-    vector<vector<Rect>> rectangles;
-    vector<vector<channelType>> channels;
-
-    //Oksana's cell
-    vector<channelType> channelsOrder1;
-    channelsOrder1.push_back(channelType::nucleus);
-    channelsOrder1.push_back(channelType::actin);
-    channelsOrder1.push_back(channelType::brightfield);
-
-    imageNames.push_back("50x50_niches_RGD_3mM_2022_02_22__14_11_14_Maximum intensity projection_Filter.tif");
-    vector<Rect> rVec;
-    rVec.push_back(Rect(220, 400, 300, 300));
-    rectangles.push_back(rVec);
-    rVec.clear();
-    channels.push_back(channelsOrder1);
-
-    //Leslie's cells
-    vector<channelType> channelsOrder2;
-    channelsOrder2.push_back(channelType::nucleus);
-    channelsOrder2.push_back(channelType::brightfield);
-    channelsOrder2.push_back(channelType::actin);
-
-    imageNames.push_back("300321_PEGvsGELMAlif.lif - Image006-1 (RGB).tif");
-    rVec.push_back(Rect(1135, 1200, 270, 480));
-    rVec.push_back(Rect(140, 1180, 340, 340));
-    rVec.push_back(Rect(1250, 200, 750, 250));
-    rVec.push_back(Rect(880, 1630, 350, 250));
-    rectangles.push_back(rVec);
-    rVec.clear();
-    channels.push_back(channelsOrder2);
-
-    imageNames.push_back("300321_PEGvsGELMAlif.lif - Image001-1 (RGB).tif");
-    
-    rVec.push_back(Rect(1020, 420, 300, 250));
-    rVec.push_back(Rect(10, 1240, 270, 530));
-    rVec.push_back(Rect(840, 1080, 270, 260));
-    rVec.push_back(Rect(1640, 1130, 310, 240));
-    rVec.push_back(Rect(1280, 1090, 220, 310));
-    rVec.push_back(Rect(200, 1150, 330, 210));
-    rectangles.push_back(rVec);
-    channels.push_back(channelsOrder2);
-
-    for (int i = 0; i<imageNames.size(); i++)
-    {
-        Mat img = imread(m_inpDir + imageNames[i], IMREAD_UNCHANGED);
-
-        Mat bgr[3];
-        split(img, bgr);
-        vector<Mat> matImages;
-        matImages.push_back(bgr[0]);
-        matImages.push_back(bgr[1]);
-        matImages.push_back(bgr[2]);
-        CustomImage image(matImages, channels[i], imageNames[i]);
-        m_arrayImages.push_back(image);
-
-        for (int j = 0; j<rectangles[i].size(); j++)
-        {
-            string name_cell = imageNames[i] + "_cell" + to_string(j);
-            CustomImage ce = image.cutImageOut(rectangles[i][j], name_cell);
-            Cell cell(ce);
-            m_cellImages.push_back(cell);
-        }
-    }
-}
-
+#endif
 
 void WindowMain::on_pushButton_test_clicked()
 {
-    Mat img = imread(m_inpDir + "300321_PEGvsGELMAlif.lif - Image006-1 (RGB).tif", IMREAD_UNCHANGED);
-    Rect r(1150, 1180, 250, 500);
+    Mat img = imread(m_inpDir + "300321_PEGvsGELMAlif.lif - Image004 (RGB).tif", IMREAD_UNCHANGED);
+    Rect r(1300, 780, 500, 620);
     rectangle(img,r, Scalar(128, 255, 0));
-    /*
-    Rect r1(10, 1240, 270, 500);
-    rectangle(img, r1, Scalar(128, 255, 0));
-    Rect r2(840, 1080, 270, 260);
-    rectangle(img, r2, Scalar(128, 255, 0));
-    Rect r3(1640, 1130, 310, 240);
-    rectangle(img, r3, Scalar(128, 255, 0));
-    Rect r4(1280, 1090, 220, 310);
-    rectangle(img, r4, Scalar(128, 255, 0));
-    Rect r5(200, 1150, 330, 210);
-    rectangle(img, r5, Scalar(128, 255, 0));
-    */
-    //help::showWindow(img,0.5);
+    vector<vector<double>> hi{ { 1,2 }, {3,4} };
    
-    loadNiceCellImages();
+    //help::showWindow(img,0.5);
+  
+    vector<vector<int>> testVectors
+    { 
+        { 4,4,4,4,4,4,4,4,4,4,4,4 }, //0
+        { 0,0,0,0,8,0,0,0,0,0,0,0},
+        {0, 0, 2, 2, 2, 2, 4, 4, 4, 4, 0, 0}, //2
+        { 0,0,4,4,4,4,8,8,8,8,0,0 }, //3
+        { 0,4,4,8,8,0 }, //4
+        //{ 0,0,0,0,8,8,0,0,0,0,0,0},
+        //{ 0,0,8,0,0,0},
+        //{0,0,1,1,0,0,30,30,2,2,0,0}, //2
+        //{ 0,0,2,2,0,0,60,60,4,4,0,0 }, //3
+        //{ 0,2,0,60,4,0 }, //4
+        { 4,6,5,7,4,5,6,6,4,4,5,6 }, //5
+        { 3,6,2,8,4,3,6,3,4,4,5,8 }, //6
+        { 1,2,3,4,5,6,7,8,9,10,11,12 }, //7
+        { 3,2,4,5,1,11,5,3,5,4,3,6 }, //8
+        { 1,2,4,2,1,15,2,3,1,1,3,1 }, //9
+        { 31,22,43,2,1,150,2,30,13,14,32,11 } //10  
+    };
+
+    vector<double> x = {0,15,30,45,60,75,90,105,120,135,150,165};
+    vector<double> x2 = { 0,30,60,90,120,150 };
+
+    auto y0 = testVectors[0];
+    auto y1 = testVectors[1];
+    auto y2 = testVectors[2];
+    auto y3 = testVectors[3];
+    auto y4 = testVectors[4];
+    m_params.plotFeatType = plotFeatureType::actFibersOptThresh;
+
+    /*
+    plotSomething(x, y0, plotFeatureType::actFibersOptThresh, "Example 1");
+    plotSomething(x, y1, plotFeatureType::actFibersOptThresh, "Example 2");
+    plotSomething(x, y2, plotFeatureType::actFibersOptThresh, "Example 3");
+    plotSomething(x, y3, plotFeatureType::actFibersOptThresh, "Example 4");
+    plotSomething(x2, y4, plotFeatureType::actFibersOptThresh, "Example 5");
+    */
+
+    vector<double> testRes_2_0 = m_analysis.testYvecs(testVectors, 2, 0);
+    vector<double> testRes_2_1 = m_analysis.testYvecs(testVectors, 2, 1);
+    vector<double> testRes_2_2 = m_analysis.testYvecs(testVectors, 2, 2);
+    vector<double> testRes_3_0 = m_analysis.testYvecs(testVectors, 3, 0);
+    vector<double> testRes_3_1 = m_analysis.testYvecs(testVectors, 3, 1);
+    vector<double> testRes_3_2 = m_analysis.testYvecs(testVectors, 4, 2);
+    
+    m_channels = m_preprocess.loadNiceCellImages(m_arrayImages, m_cellImages, m_inpDir);
     updateGeneralTable();
+    
 }
 
 void WindowMain::on_pushButton_loadImages_clicked()
 {
+    updateParameters();
+
     bool hasNucleus, hasBrightfield, hasActin;
     hasNucleus = hasBrightfield = hasActin = false;
     for (auto channel : m_channels)
     {
         if (channel == channelType::actin) {hasActin = true;}
-        if (channel == channelType::brightfield) { hasBrightfield = true; }
-        if (channel == channelType::nucleus) { hasNucleus = true; }
+        //if (channel == channelType::brightfield) { hasBrightfield = true; }
+        //if (channel == channelType::nucleus) { hasNucleus = true; }
     }
-    if (!(hasActin && hasBrightfield && hasNucleus)) 
+    if (!(hasActin )) //&& hasBrightfield && hasNucleus
     {
-        QMessageBox::information(this, "Sweetheart", "You need to have a nucleus, actin and brightfield channel. At least one of them is not here^^");
+        QMessageBox::information(this, "Sweetheart", "You need to have an actin channel. Otherwise this analysis tool kind of makes little sense^^");
         return;
     }
 
@@ -315,6 +315,7 @@ void WindowMain::on_pushButton_loadImages_clicked()
 
     m_preprocess.loadImages(m_arrayImages, m_inpDir, m_channels);
 
+    //TODO introduce images already are cells, with/without yolo,...
     m_preprocess.applyYolo(m_arrayImages, m_cellImages, m_arrayImages_withYoloBoxes, confThreshold);
 
     
@@ -327,15 +328,13 @@ void WindowMain::on_pushButton_loadImages_clicked()
         if (isDead) 
         {
             cellsToDelete.push_back(i);
-            m_deletedCellImages.push_back(m_cellImages[i]);    
+            m_deletedCellImages.push_back(m_cellImages[i]);
             continue; 
         }
 
         try 
         {
-            m_analysis.analyseNucleus(m_cellImages[i]); //TODO: what analysis did not work => include e.g. the assert(isContour),...
-            m_analysis.analyseYap(m_cellImages[i]);
-            m_analysis.analyseActin(m_cellImages[i]);
+            m_analysis.analyseCell(m_cellImages[i], m_channels);//TODO: what analysis did not work => include e.g. the assert(isContour),...
         }
         catch (...)
         {
@@ -357,10 +356,7 @@ void WindowMain::on_pushButton_loadImages_clicked()
     
     if (m_cellImages.size()>0)
     {
-        QTableWidgetItem* newItem4 = new QTableWidgetItem(QString::fromStdString(to_string(m_averageAllCells.nucleus_circularity)));
-        ui.tableWidget_all->setItem(3, 0, newItem4);
-        QTableWidgetItem* newItem5 = new QTableWidgetItem(QString::fromStdString(to_string(m_averageAllCells.nucleus_roundness)));
-        ui.tableWidget_all->setItem(4, 0, newItem5);
+        updateGeneralAnalysisTable();
         
         radioButtonCellsChanged(ui.radioButton_singleCells->isChecked());
     }
@@ -424,42 +420,25 @@ bool WindowMain::getImageToShow(Mat& outImg, string& name, double& scale)
     outImg = outImg.clone();
 }
 
-bool WindowMain::analysisConducted()
-{
-    if (ui.checkBox_roundnessAnalysis->isChecked() || ui.checkBox_pcaAnalysis->isChecked()
-        || ui.checkBox_edgeDetection->isChecked() || ui.checkBox_FAdetection->isChecked())
-    {
-        return true;
-    }
-    else
-    {
-        return false;
-    }
-}
 
 void WindowMain::on_pushButton_showImage_clicked()
 {
+    updateParameters();
     double scale = ui.doubleSpinBox_scale->value();
     bool replacing = ui.checkBox_replace->isChecked();
     Mat image;
     string name;
 
-    int pca_squareLength = ui.spinBox_squareLengthPCA->value();
-    double pca_minEigvalRatio = ui.doubleSpinBox_minEigValRatioPCA->value();
-
     //load image
     bool successful = getImageToShow(image, name, scale);
     if (!successful) { return; }
-    bool withAnalysis = analysisConducted();
     
     if (image.channels() == 1)//this can only be executed for 1 channel images
     {
         //thresholdings
         Mat thresholdedImage = image;
-        thresholdingType threshType = static_cast<thresholdingType>(ui.comboBox_thresholding->currentIndex());
-        displayType dispType = static_cast<displayType>(ui.comboBox_display->currentIndex());
 
-        switch (threshType)
+        switch (m_params.threshType)
         {
         case thresholdingType::manual:
 
@@ -473,25 +452,16 @@ void WindowMain::on_pushButton_showImage_clicked()
             break;
 
         case thresholdingType::squarePCAoptimizedThresh:
-            m_analysis.getPCAoptThresholdedImage(thresholdedImage, pca_squareLength, pca_minEigvalRatio);
-            name = name + "_threshPCAopt" + "_Length" + to_string(pca_squareLength) + "_minEigRatio" + to_string(pca_minEigvalRatio);
+            m_analysis.getPCAoptThresholdedImage(thresholdedImage);
+            name = name + "_threshPCAopt" + "_Length" + to_string(m_params.PCAsquareLength) + "_minEigRatio" + to_string(m_params.PCAminEigValRatio);
             break;
         }
 
         
-        if ((withAnalysis && dispType == displayType::thresholded) || (!withAnalysis && threshType != thresholdingType::None))
+        if ((m_params.withAnalysis && m_params.dispType == displayType::thresholded) || (!m_params.withAnalysis && m_params.threshType != thresholdingType::None))
         {
             image = thresholdedImage;
         }
-
-        /*
-        else if (ui.checkBox_thresholdPCAoptSingle->isChecked())
-        {
-            int optimalThresholding = m_analysis.getOptimalThresholdingForPCA(image, pca_squareLength, pca_minEigvalRatio);
-            successful = help::thresh(image, optimalThresholding);
-            if (successful) { name = name + "_threshPCA"; }
-        }
-        */
 
 
         //apply analysis
@@ -504,58 +474,31 @@ void WindowMain::on_pushButton_showImage_clicked()
         else if (ui.checkBox_pcaAnalysis->isChecked())
         {
             vector<double> random;
-            if (threshType == thresholdingType::None) //intensity mode
+            if (m_params.threshType == thresholdingType::None) //intensity mode
             {
-                Mat emptyImg;
-                analysisSuccessful = m_analysis.analyseWithPCA(image, random, pca_squareLength, pca_minEigvalRatio, emptyImg);
+                analysisSuccessful = m_analysis.analyseWithPCA(image, random);
             }
             else
             {
-                analysisSuccessful = m_analysis.analyseWithPCA(image, random, pca_squareLength, pca_minEigvalRatio, thresholdedImage);
+                analysisSuccessful = m_analysis.analyseWithPCA(image, random, thresholdedImage);
             }
 
             name = name + "_pcaAnalysed";
         }
         else if (ui.checkBox_edgeDetection->isChecked())
         {
-            
-            cv::blur(image, image, Size(3, 3));
-            int kernel_size = 3;
-            int highThreshCanny = ui.spinBox_highThreshCanny->value();
-            cv::Canny(image, image, highThreshCanny/2, highThreshCanny, kernel_size);
-            name = name + "_edge" + "_highthresh" + to_string(highThreshCanny);
+            m_analysis.edgeDetectionCanny(image);
+            name = name + "_edge" + "_highthresh" + to_string(m_params.highThreshCanny);
         }
         else if (ui.checkBox_FAdetection->isChecked())
         {
-            Mat blurredImage;
-            GaussianBlur(image, blurredImage, Size(9, 9), 2, 2);
-
-            vector<Vec3f> circles;
-            double minDist = ui.spinBox_minDist->value(); //10; //image.rows / 4
-            double highThreshCanny = ui.spinBox_highThreshCanny->value();//150; // 200
-            double minCircleConfidence = ui.doubleSpinBox_circleConfidence->value(); //30;
-            double dp = ui.doubleSpinBox_dpResolution->value();
-            HoughCircles(blurredImage, circles, HOUGH_GRADIENT, dp, minDist, highThreshCanny, minCircleConfidence, 0,10);
-
-            cvtColor(image, image, COLOR_GRAY2RGB);
-
-            for (size_t i = 0; i < circles.size(); i++)
-            {
-                Point center(cvRound(circles[i][0]), cvRound(circles[i][1]));
-                int radius = cvRound(circles[i][2]);
-
-                //cvtColor(image, image, COLOR_GRAY2RGB);
-                // draw the circle center
-                //circle(image, center, 3, Scalar(0, 255, 0), -1, 8, 0);
-                // draw the circle outline
-                circle(image, center, radius, Scalar(0, 0, 255), 1);
-            }
-            name = name + "_circles" + "_highthresh" + to_string(highThreshCanny) + "_minCircleConf" + to_string(minCircleConfidence)
-                +"_minDist" + to_string(minDist) + "_dp" + to_string(dp);
+            m_analysis.focalAdhesiondetection(image);
+            name = name + "_circles" + "_highthresh" + to_string(m_params.highThreshCanny) + "_minCircleConf" + 
+                to_string(m_params.FAminCircleConfidence) +"_minDist" + to_string(m_params.FAminDist) + "_dp" + to_string(m_params.FAdp);
         }
     }
     
-    if (!withAnalysis)//TODO: check what happens for unscaled 16 bit image that were analyzed => probs not scaled ;(
+    if (!m_params.withAnalysis)//TODO: check what happens for unscaled 16 bit image that were analyzed => probs not scaled ;(
     {
         help::scaleData(image);
     }
@@ -567,43 +510,86 @@ void WindowMain::on_pushButton_showImage_clicked()
 
 void WindowMain::on_pushButton_showPlot_clicked()
 {
-    plotType type = static_cast<plotType>(ui.comboBox_showPlot->currentIndex());
+    updateParameters();
 
-    if (type == plotType::actFibers)
+    Mat image;
+    int pltType = static_cast<int>(m_params.plotFeatType);
+    if(pltType==0||pltType==1||pltType==2) // single cell
     {
-        int cellNumber = ui.spinBox_showImage->value();
-
-        if (cellNumber>=0 && cellNumber<=ui.spinBox_showImage->maximum()) 
+        int cellNumber = m_params.showNumber;
+        if (cellNumber < 0 || cellNumber >= m_cellImages.size())
         {
-            if (! m_cellImages[cellNumber].actin_fibreAnglesPCA.empty())
-            {
-                plotAngles(m_cellImages[cellNumber].actin_fibreAnglesPCA);
-            }
-            else
-            {
-                Mat image;
-                double randomScale;
-                string randomName;
-                getImageToShow(image, randomName, randomScale);
-                Mat thresholdedImage = image.clone();
-                auto a = ui.spinBox_squareLengthPCA->value();
-                auto b = ui.doubleSpinBox_minEigValRatioPCA->value(); 
-                m_analysis.getPCAoptThresholdedImage(thresholdedImage, ui.spinBox_squareLengthPCA->value(), ui.doubleSpinBox_minEigValRatioPCA->value());
-                vector<double> resultingAngles;
-                m_analysis.analyseWithPCA(image, resultingAngles, ui.spinBox_squareLengthPCA->value(), ui.doubleSpinBox_minEigValRatioPCA->value(), thresholdedImage);
-                plotAngles(resultingAngles);
-            }
+            return;
         }
+        double randomScale;
+        string randomName;
+        getImageToShow(image, randomName, randomScale);
+    }
+
+    if (m_params.plotFeatType == plotFeatureType::actFibersIntensity)
+    {
+        vector<double> resultingAngles;
+        m_analysis.analyseWithPCA(image, resultingAngles);
+
+        plotData(resultingAngles, true);
+    }
+    else if (m_params.plotFeatType == plotFeatureType::actFibersOptThresh)
+    {
+        vector<double> resultingAngles;
+
+        Mat thresholdedImage = image.clone();
+        m_analysis.getPCAoptThresholdedImage(thresholdedImage);
+        m_analysis.analyseWithPCA(image, resultingAngles, thresholdedImage);
+
+        plotData(resultingAngles, true);
+    }
+    else if (m_params.plotFeatType == plotFeatureType::actFibersBoth)
+    {
+        vector<double> resultingAnglesoptThresh, resultingAnglesIntensity;
+        Mat imageCopy = image.clone();
+        Mat thresholdedImage = image.clone();
+
+        m_params.PCAsquareLength = m_params.goodIntensityPCAsquareLength;
+        m_params.PCAminEigValRatio = m_params.goodIntensityPCAminEigValRatio;
+        m_analysis.analyseWithPCA(image, resultingAnglesIntensity);
+                
+        m_params.PCAsquareLength = m_params.goodOptPCAsquareLength;
+        m_params.PCAminEigValRatio = m_params.goodOptPCAminEigValRatio;
+        m_analysis.getPCAoptThresholdedImage(thresholdedImage); 
+        m_analysis.analyseWithPCA(imageCopy, resultingAnglesoptThresh, thresholdedImage);
+                
+        plotData(resultingAnglesoptThresh, true, resultingAnglesIntensity);
     }
     else
     {
         vector<double> plottingData;
         for (int i = 0; i<m_cellImages.size();i++)
         {
-              plottingData.push_back(m_cellImages[i].getQuantity(type));
+              plottingData.push_back(m_cellImages[i].getQuantity(m_params.plotFeatType));
         }
-        plotOccurrenceInData(plottingData);
+        plotData(plottingData,false);
     }
+}
+
+void WindowMain::on_pushButton_conductAnalysisOnSingleCell_clicked() 
+{
+    updateParameters();
+    m_analysis.analyseCell(m_cellImages[m_params.showNumber], m_channels);
+    updateCellAnalysisTable(m_cellImages[m_params.showNumber]);
+}
+
+void WindowMain::on_pushButton_conductAnalysisOnAllCells_clicked()
+{
+    updateParameters();
+    
+    for (int i =0; i<m_cellImages.size(); i++) 
+    {
+        m_analysis.analyseCell(m_cellImages[i], m_channels);
+    }
+
+    m_averageAllCells = m_preprocess.getAverageProperties(m_cellImages);
+    updateGeneralAnalysisTable();
+    updateCellAnalysisTable(m_cellImages[m_params.showNumber]);
 }
 
 void WindowMain::on_pushButton_writeOut_clicked()

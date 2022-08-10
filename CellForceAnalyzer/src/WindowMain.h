@@ -7,9 +7,7 @@
 #include "Preprocess.h"
 #include "Cell.h"
 #include "Analysis.h"
-
-enum class thresholdingType { None, otsu, manual, squarePCAoptimizedThresh, allImgPCAoptimizedThresh };
-enum class displayType { original, thresholded };
+#include "ParametersFromUI.h"
 
 class WindowMain : public QMainWindow
 {
@@ -25,25 +23,26 @@ private slots:
     void on_pushButton_writeOut_clicked();
     void on_pushButton_showPlot_clicked();
     void on_pushButton_test_clicked();
+    void on_pushButton_conductAnalysisOnSingleCell_clicked();
+    void on_pushButton_conductAnalysisOnAllCells_clicked();
 
     void imageNumberChanged(int);
     void radioButtonArraysChanged(bool);
     void radioButtonCellsChanged(bool);
     void radioButtonDeletedCellsChanged(bool);
-    
-    void setCellTable(Cell cell);
-
 
 
 private:
+    void updateCellAnalysisTable(Cell cell);
+    void updateGeneralAnalysisTable();
     void updateGeneralTable();
+
     bool getImageToShow(cv::Mat&, std::string&, double&);
-    void loadNiceCellImages();
-    bool analysisConducted();
     
+    void plotData(std::vector<double>, bool, std::vector<double> = std::vector<double>());
 
     void writeAnalysedDataToFile();
-
+    void updateParameters();
 
     Ui::WindowMainClass ui;
 
@@ -56,18 +55,15 @@ private:
     std::vector<channelType> m_channels;
 
     std::vector<CustomImage> m_arrayImages;
-    
     std::vector<cv::Mat> m_arrayImages_withYoloBoxes;
-
     std::vector<Cell> m_cellImages;
     std::vector<Cell> m_deletedCellImages;
 
     Cell m_averageAllCells;
 
     Preprocess m_preprocess;
+    ParametersFromUI m_params; //Parameters from UI
     Analysis m_analysis;
-
-    
 };
 
 
@@ -91,7 +87,7 @@ private:
 // e.g. one pixel is very high intensity in an 16 bit image and scaling fucks up => would at least be seeable in show image
 // but still keep it in mind => yolo can fail if one pixel is high and scaling fails => better scaling than min max??
 
-//TODO: try fourrier, analysis fibre counting, dot counting for focal adhesions
+//TODO: try fourrierb, analysis fibre counting, dot counting for focal adhesions
 
 //TODO: bug => first actin switching to array yolo => max image set to 0...
 
@@ -103,3 +99,12 @@ private:
 
 //Idee summieren entlang kanten => schauen ob pixel uniformely dist or not.
 //PCA is not working if two fibers are at left and right edge => improvable?
+
+//TODO create plotting class and showing class
+
+//Cells empty parameter,.... => no if(cells.size())
+
+//TODO pca out of analysis => fiberAnalysis.h in analysis and windowmain
+
+//TODO for show plot => try and catch
+// separate cells dead analysis, analysis, yolo,... => always: with checkbox for excluding cells that were bad (dead, analysisfailed)

@@ -6,11 +6,20 @@
 #include <set>
 #include <map>
 
+enum class thresholdingType { None, otsu, manual, squarePCAoptimizedThresh, allImgPCAoptimizedThresh };
+enum class displayType { original, thresholded };
+
 namespace help
 {
+    
     const double M_PI = 3.14159265358979323846;
     const double minPercentagePointsPCA = 0.08;
+    const int minPointsPCA = 5;
     const double minAverageIntensityForNotBackground = 30;
+
+    const double spacingAnglePlot = 15;
+    const double startAnglePlot = 0;
+    
 
     std::string& copiedDirectoryToNiceString(std::string&);
     bool thresh(cv::Mat&, int = 0, bool = true);
