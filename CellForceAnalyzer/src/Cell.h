@@ -2,8 +2,7 @@
 #include "CustomImage.h"
 #include <string>
 
-enum class plotFeatureType { actFibersOptThresh, actFibersIntensity, actFibersBoth, 
-    nuclArea, nuclCircularity, nuclRoundness, actArea, actDensity, actMaxLength, actMainAngle, yapInNucleus};
+enum class plotFeatureType { actFibersOptThresh, actFibersIntensity, actFibersBoth, nuclArea, nuclCircularity, nuclRoundness, actArea, actDensity, actMaxLength, actMainAngle, yapInNucleus};
 
 class Cell :
     public CustomImage

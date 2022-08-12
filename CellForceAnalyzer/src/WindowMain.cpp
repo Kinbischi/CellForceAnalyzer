@@ -19,15 +19,9 @@
 using namespace std;
 using namespace cv;
 
-#ifndef _DEBUG
 
-#include "matplotlibcpp.h"
-namespace plt = matplotlibcpp;
-
-#endif
-
-WindowMain::WindowMain(QWidget *parent)
-    : QMainWindow(parent),m_analysis(m_params)
+WindowMain::WindowMain(QWidget* parent)
+    : QMainWindow(parent), m_analysis(m_params), m_analysisFiberDir(m_params), m_plotting(m_params, m_analysisFiberDir, m_cellImages)
 {
     ui.setupUi(this);
 
@@ -179,55 +173,6 @@ void WindowMain::on_pushButton_channels_clicked()
 }
 
 
-//TODO:
-// set standard square size
-void WindowMain::plotData(vector<double> data1, bool plottingAngles, vector<double> data2)
-{
-    vector<double> x = m_analysis.createX(data1, plottingAngles);
-    vector<int> y1 = m_analysis.createY(data1, x);
-
-    #ifndef _DEBUG
-    plt::figure();
-
-    int ylimMax = *max_element(y1.begin(), y1.end());
-
-    vector<string> labels = Cell::getPlotLegendNames(m_params.plotFeatType);
-
-    plt::plot(x, y1, { {"marker", "o"}, {"linestyle", "--"}, {"label", labels[0]} });
-    if (!data2.empty())
-    {
-        vector<int> y2 = m_analysis.createY(data2, x);
-        int ylimMax2 = *max_element(y2.begin(), y2.end());
-        if (ylimMax2 > ylimMax) { ylimMax = ylimMax2; }
-        plt::plot(x, y2, { {"marker", "o"}, {"linestyle", "--"}, {"label", labels[1]} });
-        plt::legend();
-    }
-    ylimMax = ylimMax + std::ceil(0.08 * ylimMax);
-    plt::ylim(0,ylimMax);
-
-    plt::xlabel(Cell::getPlotXLabel(m_params.plotFeatType));
-    plt::ylabel(Cell::getPlotYLabel(m_params.plotFeatType));
-    plt::title(Cell::getPlotTitle(m_params.plotFeatType));
-    plt::show();
-    #endif
-}
-
-#ifndef _DEBUG
-void plotSomething(vector<double> x, vector<double> y,plotFeatureType pltType,string title)
-{
-    plt::figure();
-
-    plt::plot(x, y, { {"marker", "o"}, {"linestyle", "--"} });
-
-    plt::xlabel(Cell::getPlotXLabel(pltType));   
-    plt::ylabel(Cell::getPlotYLabel(pltType));
-    plt::ylim(0, 10);
-    plt::title(title);
-    //plt::savefig(title +".pdf");
-    plt::show();
-}
-#endif
-
 void WindowMain::on_pushButton_test_clicked()
 {
     Mat img = imread(m_inpDir + "300321_PEGvsGELMAlif.lif - Image004 (RGB).tif", IMREAD_UNCHANGED);
@@ -275,12 +220,12 @@ void WindowMain::on_pushButton_test_clicked()
     plotSomething(x2, y4, plotFeatureType::actFibersOptThresh, "Example 5");
     */
 
-    vector<double> testRes_2_0 = m_analysis.testYvecs(testVectors, 2, 0);
-    vector<double> testRes_2_1 = m_analysis.testYvecs(testVectors, 2, 1);
-    vector<double> testRes_2_2 = m_analysis.testYvecs(testVectors, 2, 2);
-    vector<double> testRes_3_0 = m_analysis.testYvecs(testVectors, 3, 0);
-    vector<double> testRes_3_1 = m_analysis.testYvecs(testVectors, 3, 1);
-    vector<double> testRes_3_2 = m_analysis.testYvecs(testVectors, 4, 2);
+    vector<double> testRes_2_0 = m_analysisFiberDir.testYvecs(testVectors, 2, 0);
+    vector<double> testRes_2_1 = m_analysisFiberDir.testYvecs(testVectors, 2, 1);
+    vector<double> testRes_2_2 = m_analysisFiberDir.testYvecs(testVectors, 2, 2);
+    vector<double> testRes_3_0 = m_analysisFiberDir.testYvecs(testVectors, 3, 0);
+    vector<double> testRes_3_1 = m_analysisFiberDir.testYvecs(testVectors, 3, 1);
+    vector<double> testRes_3_2 = m_analysisFiberDir.testYvecs(testVectors, 4, 2);
     
     m_channels = m_preprocess.loadNiceCellImages(m_arrayImages, m_cellImages, m_inpDir);
     updateGeneralTable();
@@ -376,7 +321,7 @@ bool WindowMain::getImageToShow(Mat& outImg, string& name, double& scale)
         return false;
     }
     
-    int imageNumber = ui.spinBox_showImage->value();
+    int imageNumber = m_params.showNumber;
     channelType channel = static_cast<channelType>(ui.comboBox_showImage->currentIndex());
     CustomImage image;
 
@@ -452,7 +397,7 @@ void WindowMain::on_pushButton_showImage_clicked()
             break;
 
         case thresholdingType::squarePCAoptimizedThresh:
-            m_analysis.getPCAoptThresholdedImage(thresholdedImage);
+            m_analysisFiberDir.getPCAoptThresholdedImage(thresholdedImage);
             name = name + "_threshPCAopt" + "_Length" + to_string(m_params.PCAsquareLength) + "_minEigRatio" + to_string(m_params.PCAminEigValRatio);
             break;
         }
@@ -476,11 +421,11 @@ void WindowMain::on_pushButton_showImage_clicked()
             vector<double> random;
             if (m_params.threshType == thresholdingType::None) //intensity mode
             {
-                analysisSuccessful = m_analysis.analyseWithPCA(image, random);
+                analysisSuccessful = m_analysisFiberDir.analyseWithPCA(image, random);
             }
             else
             {
-                analysisSuccessful = m_analysis.analyseWithPCA(image, random, thresholdedImage);
+                analysisSuccessful = m_analysisFiberDir.analyseWithPCA(image, random, thresholdedImage);
             }
 
             name = name + "_pcaAnalysed";
@@ -512,63 +457,7 @@ void WindowMain::on_pushButton_showPlot_clicked()
 {
     updateParameters();
 
-    Mat image;
-    int pltType = static_cast<int>(m_params.plotFeatType);
-    if(pltType==0||pltType==1||pltType==2) // single cell
-    {
-        int cellNumber = m_params.showNumber;
-        if (cellNumber < 0 || cellNumber >= m_cellImages.size())
-        {
-            return;
-        }
-        double randomScale;
-        string randomName;
-        getImageToShow(image, randomName, randomScale);
-    }
-
-    if (m_params.plotFeatType == plotFeatureType::actFibersIntensity)
-    {
-        vector<double> resultingAngles;
-        m_analysis.analyseWithPCA(image, resultingAngles);
-
-        plotData(resultingAngles, true);
-    }
-    else if (m_params.plotFeatType == plotFeatureType::actFibersOptThresh)
-    {
-        vector<double> resultingAngles;
-
-        Mat thresholdedImage = image.clone();
-        m_analysis.getPCAoptThresholdedImage(thresholdedImage);
-        m_analysis.analyseWithPCA(image, resultingAngles, thresholdedImage);
-
-        plotData(resultingAngles, true);
-    }
-    else if (m_params.plotFeatType == plotFeatureType::actFibersBoth)
-    {
-        vector<double> resultingAnglesoptThresh, resultingAnglesIntensity;
-        Mat imageCopy = image.clone();
-        Mat thresholdedImage = image.clone();
-
-        m_params.PCAsquareLength = m_params.goodIntensityPCAsquareLength;
-        m_params.PCAminEigValRatio = m_params.goodIntensityPCAminEigValRatio;
-        m_analysis.analyseWithPCA(image, resultingAnglesIntensity);
-                
-        m_params.PCAsquareLength = m_params.goodOptPCAsquareLength;
-        m_params.PCAminEigValRatio = m_params.goodOptPCAminEigValRatio;
-        m_analysis.getPCAoptThresholdedImage(thresholdedImage); 
-        m_analysis.analyseWithPCA(imageCopy, resultingAnglesoptThresh, thresholdedImage);
-                
-        plotData(resultingAnglesoptThresh, true, resultingAnglesIntensity);
-    }
-    else
-    {
-        vector<double> plottingData;
-        for (int i = 0; i<m_cellImages.size();i++)
-        {
-              plottingData.push_back(m_cellImages[i].getQuantity(m_params.plotFeatType));
-        }
-        plotData(plottingData,false);
-    }
+    m_plotting.plot();
 }
 
 void WindowMain::on_pushButton_conductAnalysisOnSingleCell_clicked() 

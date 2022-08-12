@@ -8,6 +8,8 @@
 #include "Cell.h"
 #include "Analysis.h"
 #include "ParametersFromUI.h"
+#include "Plotting.h"
+#include "AnalysisFiberDirection.h"
 
 class WindowMain : public QMainWindow
 {
@@ -39,7 +41,7 @@ private:
 
     bool getImageToShow(cv::Mat&, std::string&, double&);
     
-    void plotData(std::vector<double>, bool, std::vector<double> = std::vector<double>());
+    //void plotData(std::vector<double>, bool, std::vector<double> = std::vector<double>());
 
     void writeAnalysedDataToFile();
     void updateParameters();
@@ -64,6 +66,8 @@ private:
     Preprocess m_preprocess;
     ParametersFromUI m_params; //Parameters from UI
     Analysis m_analysis;
+    Plotting m_plotting;
+    AnalysisFiberDirection m_analysisFiberDir;
 };
 
 
