@@ -2,7 +2,9 @@
 #include "CustomImage.h"
 #include <string>
 
-enum class plotFeatureType { actFibersOptThresh, actFibersIntensity, actFibersBoth, nuclArea, nuclCircularity, nuclRoundness, actArea, actDensity, actMaxLength, actMainAngle, yapInNucleus};
+
+
+enum class plotFeatureType { actFibersOptThresh, actFibersIntensity, actFibersBoth, nuclArea, nuclCircularity, nuclRoundness, actArea, actDensity, actMaxLength, actMainAngle, yapInNucleus };
 
 class Cell :
     public CustomImage
@@ -12,10 +14,6 @@ public:
     Cell() = default;
 
     double getQuantity(plotFeatureType);
-    static std::string getPlotTitle(plotFeatureType);
-    static std::string getPlotXLabel(plotFeatureType);
-    static std::string getPlotYLabel(plotFeatureType);
-    static std::vector<std::string> getPlotLegendNames(plotFeatureType);
 
     int nucleus_area;
     double nucleus_circularity;

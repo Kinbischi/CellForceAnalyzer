@@ -164,5 +164,4 @@ namespace help
         temp.y = (int)(p.y + hookLength * sin(angle - CV_PI / 4));
         line(img, p, temp, colour, 1);
     }
-
 }

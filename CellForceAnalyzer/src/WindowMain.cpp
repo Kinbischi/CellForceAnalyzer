@@ -21,7 +21,8 @@ using namespace cv;
 
 
 WindowMain::WindowMain(QWidget* parent)
-    : QMainWindow(parent), m_analysis(m_params), m_analysisFiberDir(m_params), m_plotting(m_params, m_analysisFiberDir, m_cellImages)
+    : QMainWindow(parent), m_analysis(m_params), m_analysisFiberDir(m_params), m_plotting(m_params, m_analysisFiberDir, m_cellImages),
+    m_display(m_params, m_arrayImages, m_arrayImages_withYoloBoxes, m_cellImages, m_deletedCellImages, m_analysis, m_analysisFiberDir)
 {
     ui.setupUi(this);
 
@@ -41,10 +42,28 @@ WindowMain::WindowMain(QWidget* parent)
 void WindowMain::updateParameters()
 {
     m_params.showNumber = ui.spinBox_showImage->value();
+    m_params.scaleFactor = ui.doubleSpinBox_scale->value();
+    m_params.replacingMode = ui.checkBox_replace->isChecked();
+
+    m_params.channel = static_cast<channelType>(ui.comboBox_showImage->currentIndex());
+
+    m_params.cellArrays = ui.radioButton_cellArrays->isChecked();
+    m_params.singleCells = ui.radioButton_singleCells->isChecked();
+    m_params.deletedCells = ui.radioButton_deletedCells->isChecked();
+    m_params.cellArraysWithBoxes = ui.radioButton_cellArraysWithBoxes->isChecked();
 
     m_params.threshType = static_cast<thresholdingType>(ui.comboBox_thresholding->currentIndex());
     m_params.dispType = static_cast<displayType>(ui.comboBox_display->currentIndex());
     m_params.plotFeatType = static_cast<plotFeatureType>(ui.comboBox_showPlot->currentIndex());
+
+    //analysis conducted
+    m_params.fiberPCA = ui.radioButton_fiberPCA->isChecked();
+    m_params.edgeDetection = ui.radioButton_edgeDetection->isChecked();
+    m_params.FAdetection = ui.radioButton_FAdetection->isChecked();
+    m_params.variousAnalysis = ui.radioButton_variousAnalysis->isChecked();
+
+    //thresholdinng parameters
+    m_params.manualThreshold = ui.spinBox_thresholdManually->value();
 
     //PCA parameters
     m_params.PCAsquareLength = ui.spinBox_squareLengthPCA->value();
@@ -57,8 +76,8 @@ void WindowMain::updateParameters()
     m_params.FAminCircleConfidence = ui.doubleSpinBox_circleConfidence->value();
     m_params.FAdp = ui.doubleSpinBox_dpResolution->value();
     
-    if (ui.checkBox_roundnessAnalysis->isChecked() || ui.checkBox_pcaAnalysis->isChecked() 
-        || ui.checkBox_edgeDetection->isChecked() || ui.checkBox_FAdetection->isChecked())
+    if (ui.radioButton_variousAnalysis->isChecked() || ui.radioButton_fiberPCA->isChecked()
+        || ui.radioButton_edgeDetection->isChecked() || ui.radioButton_FAdetection->isChecked())
     { m_params.withAnalysis = true; }
     else 
     { m_params.withAnalysis = false; }
@@ -246,7 +265,7 @@ void WindowMain::on_pushButton_loadImages_clicked()
     }
     if (!(hasActin )) //&& hasBrightfield && hasNucleus
     {
-        QMessageBox::information(this, "Sweetheart", "You need to have an actin channel. Otherwise this analysis tool kind of makes little sense^^");
+        QMessageBox::information(this, "Sweetheart", "You need to have an actin channel. Otherwise this analysis tool makes little sense^^");
         return;
     }
 
@@ -313,144 +332,22 @@ void WindowMain::on_pushButton_loadImages_clicked()
     }
 }
 
-bool WindowMain::getImageToShow(Mat& outImg, string& name, double& scale)
-{
-    if (m_arrayImages.empty())
-    {
-        QMessageBox::information(this, "Good Morning", "Read in Images!?");
-        return false;
-    }
-    
-    int imageNumber = m_params.showNumber;
-    channelType channel = static_cast<channelType>(ui.comboBox_showImage->currentIndex());
-    CustomImage image;
-
-    if (ui.radioButton_cellArrays->isChecked())
-    {
-        if (scale == -1) { scale = 0.4; }
-        image = m_arrayImages[imageNumber];
-        outImg = image.getChannel(channel);
-        name = image.getName(channel);
-    }
-    if (ui.radioButton_singleCells->isChecked())
-    {
-        if (m_cellImages.empty()) { return false; }
-        if (scale == -1) { scale = 4; }
-        image = m_cellImages[imageNumber];
-        outImg = image.getChannel(channel);
-        name = image.getName(channel);
-    }
-    if (ui.radioButton_deletedCells->isChecked())
-    {
-        if (m_deletedCellImages.empty()) { return false; }
-        if (scale == -1) { scale = 4; }
-        image = m_deletedCellImages[imageNumber];
-        outImg = image.getChannel(channel);
-        name = image.getName(channel);
-    }
-    if (ui.radioButton_cellArraysWithBoxes->isChecked())
-    {
-        if (scale == -1) { scale = 0.4; }
-        image = m_arrayImages[imageNumber]; // only for name
-        outImg = m_arrayImages_withYoloBoxes[imageNumber];
-        name = image.getName();
-    }
-
-    if (outImg.empty())
-    {
-        QMessageBox::information(this, "Good Morning", "This channel was not loaded!");
-        return false;
-    }
-
-    outImg = outImg.clone();
-}
-
 
 void WindowMain::on_pushButton_showImage_clicked()
 {
     updateParameters();
-    double scale = ui.doubleSpinBox_scale->value();
-    bool replacing = ui.checkBox_replace->isChecked();
-    Mat image;
-    string name;
 
-    //load image
-    bool successful = getImageToShow(image, name, scale);
-    if (!successful) { return; }
-    
-    if (image.channels() == 1)//this can only be executed for 1 channel images
+    int successful = m_display.prepareAnalysisToShow();
+
+    switch (successful)
     {
-        //thresholdings
-        Mat thresholdedImage = image;
-
-        switch (m_params.threshType)
-        {
-        case thresholdingType::manual:
-
-            help::thresh(thresholdedImage, ui.spinBox_thresholdManually->value());
-            name = name + "_threshManually" + to_string(ui.spinBox_thresholdManually->value());
-            break;
-
-        case thresholdingType::otsu:
-            help::thresh(thresholdedImage);
-            name = name + "_threshOtsu";
-            break;
-
-        case thresholdingType::squarePCAoptimizedThresh:
-            m_analysisFiberDir.getPCAoptThresholdedImage(thresholdedImage);
-            name = name + "_threshPCAopt" + "_Length" + to_string(m_params.PCAsquareLength) + "_minEigRatio" + to_string(m_params.PCAminEigValRatio);
-            break;
-        }
-
-        
-        if ((m_params.withAnalysis && m_params.dispType == displayType::thresholded) || (!m_params.withAnalysis && m_params.threshType != thresholdingType::None))
-        {
-            image = thresholdedImage;
-        }
-
-
-        //apply analysis
-        bool analysisSuccessful = false;
-        if (ui.checkBox_roundnessAnalysis->isChecked())
-        {
-            analysisSuccessful = m_analysis.analyseShape(image);
-            name = name + "_roundAnalysed";
-        }
-        else if (ui.checkBox_pcaAnalysis->isChecked())
-        {
-            vector<double> random;
-            if (m_params.threshType == thresholdingType::None) //intensity mode
-            {
-                analysisSuccessful = m_analysisFiberDir.analyseWithPCA(image, random);
-            }
-            else
-            {
-                analysisSuccessful = m_analysisFiberDir.analyseWithPCA(image, random, thresholdedImage);
-            }
-
-            name = name + "_pcaAnalysed";
-        }
-        else if (ui.checkBox_edgeDetection->isChecked())
-        {
-            m_analysis.edgeDetectionCanny(image);
-            name = name + "_edge" + "_highthresh" + to_string(m_params.highThreshCanny);
-        }
-        else if (ui.checkBox_FAdetection->isChecked())
-        {
-            m_analysis.focalAdhesiondetection(image);
-            name = name + "_circles" + "_highthresh" + to_string(m_params.highThreshCanny) + "_minCircleConf" + 
-                to_string(m_params.FAminCircleConfidence) +"_minDist" + to_string(m_params.FAminDist) + "_dp" + to_string(m_params.FAdp);
-        }
+    case 1:
+        QMessageBox::information(this, "Good Morning", "Read in Images!?");
+        break;
+    case 2:
+        QMessageBox::information(this, "Good Morning", "This channel was not loaded!");
+        break;
     }
-    
-    if (!m_params.withAnalysis)//TODO: check what happens for unscaled 16 bit image that were analyzed => probs not scaled ;(
-    {
-        help::scaleData(image);
-    }
-
-    string windowName = replacing ? "Image" : name;
-
-    help::showWindow(image, scale, windowName);
 }
 
 void WindowMain::on_pushButton_showPlot_clicked()

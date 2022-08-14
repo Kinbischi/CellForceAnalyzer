@@ -14,7 +14,103 @@ namespace plt = matplotlibcpp;
 
 Plotting::Plotting(ParametersFromUI& p, AnalysisFiberDirection& a, std::vector<Cell>& c) :params(p), analysisFiberDir(a), cellImages(c) {};
 
+string Plotting::getPlotTitle(plotFeatureType CFType)
+{
+    string name;
+    switch (CFType)
+    {
+    case plotFeatureType::actFibersOptThresh:
+        name = "Actin fiber analysis (optimally thresholded)";
+        break;
+    case plotFeatureType::actFibersIntensity:
+        name = "Actin fiber analysis (intensity-based)";
+        break;
+    case plotFeatureType::actFibersBoth:
+        name = "Actin fiber analysis";
+        break;
+    case plotFeatureType::nuclArea:
+        name = "Nucleus area";
+        break;
+    case plotFeatureType::nuclCircularity:
+        name = "Nucleus circularity";
+        break;
+    case plotFeatureType::nuclRoundness:
+        name = "Nucleus roundness";
+        break;
+    case plotFeatureType::yapInNucleus:
+        name = "YAP in nucleus";
+        break;
+    case plotFeatureType::actArea:
+        name = "Actin area";
+        break;
+    case plotFeatureType::actDensity:
+        name = "Actin density";
+        break;
+    case plotFeatureType::actMaxLength:
+        name = "Actin maximum stretch";
+        break;
+    case plotFeatureType::actMainAngle:
+        name = "Actin main angle";
+        break;
+    }
+    return name;
+}
 
+vector<string> Plotting::getPlotLegendNames(plotFeatureType CFType)
+{
+    vector<string> names(2);
+    switch (CFType)
+    {
+    case plotFeatureType::actFibersBoth:
+        names[0] = "Optimally thresholded image PCA";
+        names[1] = "Intensity-based PCA";
+        break;
+
+    }
+    return names;
+}
+
+string Plotting::getPlotXLabel(plotFeatureType CFType)
+{
+    string name;
+    switch (CFType)
+    {
+    case plotFeatureType::actFibersOptThresh:
+        name = "Angle (in degrees)";
+        break;
+    case plotFeatureType::actFibersIntensity:
+        name = "Angle (in degrees)";
+        break;
+    case plotFeatureType::actFibersBoth:
+        name = "Angle (in degrees)";
+        break;
+    default:
+        name = getPlotTitle(CFType);
+        break;
+    }
+    return name;
+}
+
+string Plotting::getPlotYLabel(plotFeatureType CFType)
+{
+    string name;
+    switch (CFType)
+    {
+    case plotFeatureType::actFibersOptThresh:
+        name = "Number of squares";
+        break;
+    case plotFeatureType::actFibersIntensity:
+        name = "Number of squares";
+        break;
+    case plotFeatureType::actFibersBoth:
+        name = "Number of squares";
+        break;
+    default:
+        name = "Number of occurrences";
+        break;
+    }
+    return name;
+}
 
 vector<double> Plotting::createX(vector<double> data1, bool plottingAngles)
 {
@@ -62,6 +158,7 @@ vector<int> Plotting::createY(vector<double> data, vector<double> x)
 }
 
 
+
 //TODO:
 // set standard square size
 void Plotting::plotData(vector<double> data1, bool plottingAngles, vector<double> data2)
@@ -74,7 +171,7 @@ void Plotting::plotData(vector<double> data1, bool plottingAngles, vector<double
 
     int ylimMax = *max_element(y1.begin(), y1.end());
 
-    vector<string> labels = Cell::getPlotLegendNames(params.plotFeatType);
+    vector<string> labels = getPlotLegendNames(params.plotFeatType);
 
     plt::plot(x, y1, { {"marker", "o"}, {"linestyle", "--"}, {"label", labels[0]} });
     if (!data2.empty())
@@ -88,30 +185,57 @@ void Plotting::plotData(vector<double> data1, bool plottingAngles, vector<double
     ylimMax = ylimMax + std::ceil(0.08 * ylimMax);
     plt::ylim(0, ylimMax);
 
-    plt::xlabel(Cell::getPlotXLabel(params.plotFeatType));
-    plt::ylabel(Cell::getPlotYLabel(params.plotFeatType));
-    plt::title(Cell::getPlotTitle(params.plotFeatType));
+    plt::xlabel(getPlotXLabel(params.plotFeatType));
+    plt::ylabel(getPlotYLabel(params.plotFeatType));
+    plt::title(getPlotTitle(params.plotFeatType));
     plt::show();
 #endif
 }
 
-#ifndef _DEBUG
-void plotSomething(vector<double> x, vector<double> y, plotFeatureType pltType, string title)
+
+void Plotting::plotSomething(vector<double> x, vector<double> y, plotFeatureType pltType, string title)
 {
+#ifndef _DEBUG
     plt::figure();
 
     plt::plot(x, y, { {"marker", "o"}, {"linestyle", "--"} });
 
-    plt::xlabel(Cell::getPlotXLabel(pltType));
-    plt::ylabel(Cell::getPlotYLabel(pltType));
+    plt::xlabel(getPlotXLabel(pltType));
+    plt::ylabel(getPlotYLabel(pltType));
     plt::ylim(0, 10);
     plt::title(title);
     //plt::savefig(title +".pdf");
     plt::show();
-}
 #endif
+}
 
+/*
+int Plotting::getImageToPlot(Mat& outImg)
+{
+    if (arrayImages.empty()) { return 1; }
 
+    int imageNumber = params.showNumber;
+    channelType channel = params.channel;
+    CustomImage image;
+    
+    if (params.singleCells)
+    {
+        if (cellImages.empty()) { return false; }
+        if (scale == -1) { scale = 4; }
+        image = cellImages[imageNumber];
+        outImg = image.getChannel(channel);
+        name = image.getName(channel);
+    }
+    if (m_params.deletedCells)
+    {
+        if (m_deletedCellImages.empty()) { return false; }
+        if (scale == -1) { scale = 4; }
+        image = m_deletedCellImages[imageNumber];
+        outImg = image.getChannel(channel);
+        name = image.getName(channel);
+    }
+}
+*/
 
 void Plotting::plot()
 {
@@ -123,7 +247,8 @@ void Plotting::plot()
         if (cellNumber < 0 || cellNumber >= cellImages.size())
         {
             return;
-        }  
+        }
+        
         double randomScale;
         string randomName;
         //getImageToShow(image, randomName, randomScale);

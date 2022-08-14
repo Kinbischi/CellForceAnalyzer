@@ -10,6 +10,7 @@
 #include "ParametersFromUI.h"
 #include "Plotting.h"
 #include "AnalysisFiberDirection.h"
+#include "Display.h"
 
 class WindowMain : public QMainWindow
 {
@@ -68,6 +69,7 @@ private:
     Analysis m_analysis;
     Plotting m_plotting;
     AnalysisFiberDirection m_analysisFiberDir;
+    Display m_display;
 };
 
 
