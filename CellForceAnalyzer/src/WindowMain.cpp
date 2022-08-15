@@ -21,8 +21,8 @@ using namespace cv;
 
 
 WindowMain::WindowMain(QWidget* parent)
-    : QMainWindow(parent), m_analysis(m_params), m_analysisFiberDir(m_params), m_plotting(m_params, m_analysisFiberDir, m_cellImages),
-    m_display(m_params, m_arrayImages, m_arrayImages_withYoloBoxes, m_cellImages, m_deletedCellImages, m_analysis, m_analysisFiberDir)
+    : QMainWindow(parent), m_preprocess(m_params,m_data), m_analysis(m_params), m_analysisFiberDir(m_params), m_plotting(m_params, m_data, m_analysisFiberDir),
+    m_display(m_params, m_data, m_analysis, m_analysisFiberDir)
 {
     ui.setupUi(this);
 
@@ -35,7 +35,7 @@ WindowMain::WindowMain(QWidget* parent)
 
     //it grabs the channels (order of input channels) as default values from the .ui file
     WindowChannels channelsWindow;
-    m_channels = channelsWindow.set_ChannelTypes();
+    m_data.channels = channelsWindow.set_ChannelTypes();
     
 }
 
@@ -44,6 +44,10 @@ void WindowMain::updateParameters()
     m_params.showNumber = ui.spinBox_showImage->value();
     m_params.scaleFactor = ui.doubleSpinBox_scale->value();
     m_params.replacingMode = ui.checkBox_replace->isChecked();
+
+    //loading
+    m_params.loadAsCells = ui.checkBox_loadAsCells->isChecked();
+    m_params.loadthreeChannels = ui.checkBox_3channelsPerImage->isChecked();
 
     m_params.channel = static_cast<channelType>(ui.comboBox_showImage->currentIndex());
 
@@ -89,9 +93,9 @@ void WindowMain::imageNumberChanged(int index)
     m_imageNumber_show = index;
     if (ui.radioButton_singleCells->isChecked())
     {
-        if (!m_cellImages.empty())
+        if (!m_data.cellImages.empty())
         {
-            updateCellAnalysisTable(m_cellImages[index]);
+            updateCellAnalysisTable(m_data.cellImages[index]);
         }
     }
 }
@@ -100,8 +104,8 @@ void WindowMain::radioButtonArraysChanged(bool index)
 {
     if (index)
     {
-        if (m_arrayImages.empty()) { ui.spinBox_showImage->setMaximum(0); }
-        else { ui.spinBox_showImage->setMaximum(m_arrayImages.size() - 1); }
+        if (m_data.arrayImages.empty()) { ui.spinBox_showImage->setMaximum(0); }
+        else { ui.spinBox_showImage->setMaximum(m_data.arrayImages.size() - 1); }
         ui.tableWidget_cell->clearContents();
     }
 }
@@ -110,9 +114,9 @@ void WindowMain::radioButtonCellsChanged(bool index)
 {
     if (index)
     {
-        if (m_cellImages.empty()) { ui.spinBox_showImage->setMaximum(0); }
-        else { ui.spinBox_showImage->setMaximum(m_cellImages.size() - 1);
-            updateCellAnalysisTable(m_cellImages[m_imageNumber_show]); }
+        if (m_data.cellImages.empty()) { ui.spinBox_showImage->setMaximum(0); }
+        else { ui.spinBox_showImage->setMaximum(m_data.cellImages.size() - 1);
+            updateCellAnalysisTable(m_data.cellImages[m_imageNumber_show]); }
     }
 }
 
@@ -120,19 +124,19 @@ void WindowMain::radioButtonDeletedCellsChanged(bool index)
 {
     if (index)
     {
-        if (m_deletedCellImages.empty()) { ui.spinBox_showImage->setMaximum(0); }
-        else { ui.spinBox_showImage->setMaximum(m_deletedCellImages.size() - 1); }
+        if (m_data.deletedCellImages.empty()) { ui.spinBox_showImage->setMaximum(0); }
+        else { ui.spinBox_showImage->setMaximum(m_data.deletedCellImages.size() - 1); }
         ui.tableWidget_cell->clearContents();
     }
 }
 
 void WindowMain::updateGeneralTable()
 {
-    QTableWidgetItem* newItem = new QTableWidgetItem(QString::fromStdString(to_string(m_arrayImages.size())));
+    QTableWidgetItem* newItem = new QTableWidgetItem(QString::fromStdString(to_string(m_data.arrayImages.size())));
     ui.tableWidget_all->setItem(0, 0, newItem);
-    QTableWidgetItem* newItem2 = new QTableWidgetItem(QString::fromStdString(to_string(m_cellImages.size())));
+    QTableWidgetItem* newItem2 = new QTableWidgetItem(QString::fromStdString(to_string(m_data.cellImages.size())));
     ui.tableWidget_all->setItem(1, 0, newItem2);
-    QTableWidgetItem* newItem3 = new QTableWidgetItem(QString::fromStdString(to_string(m_deletedCellImages.size())));
+    QTableWidgetItem* newItem3 = new QTableWidgetItem(QString::fromStdString(to_string(m_data.deletedCellImages.size())));
     ui.tableWidget_all->setItem(2, 0, newItem3);
 }
 
@@ -161,21 +165,21 @@ void WindowMain::updateCellAnalysisTable(Cell cell)
 void WindowMain::updateGeneralAnalysisTable()
 {
     QTableWidgetItem* newItem;
-    newItem = new QTableWidgetItem(QString::fromStdString(to_string(m_averageAllCells.nucleus_area)));
+    newItem = new QTableWidgetItem(QString::fromStdString(to_string(m_data.averageAllCells.nucleus_area)));
     ui.tableWidget_all->setItem(4, 0, newItem);
-    newItem = new QTableWidgetItem(QString::fromStdString(to_string(m_averageAllCells.nucleus_circularity)));
+    newItem = new QTableWidgetItem(QString::fromStdString(to_string(m_data.averageAllCells.nucleus_circularity)));
     ui.tableWidget_all->setItem(5, 0, newItem);
-    newItem = new QTableWidgetItem(QString::fromStdString(to_string(m_averageAllCells.nucleus_roundness)));
+    newItem = new QTableWidgetItem(QString::fromStdString(to_string(m_data.averageAllCells.nucleus_roundness)));
     ui.tableWidget_all->setItem(6, 0, newItem);
-    newItem = new QTableWidgetItem(QString::fromStdString(to_string(m_averageAllCells.actin_area)));
+    newItem = new QTableWidgetItem(QString::fromStdString(to_string(m_data.averageAllCells.actin_area)));
     ui.tableWidget_all->setItem(7, 0, newItem);
-    newItem = new QTableWidgetItem(QString::fromStdString(to_string(m_averageAllCells.actin_density)));
+    newItem = new QTableWidgetItem(QString::fromStdString(to_string(m_data.averageAllCells.actin_density)));
     ui.tableWidget_all->setItem(8, 0, newItem);
-    newItem = new QTableWidgetItem(QString::fromStdString(to_string(m_averageAllCells.actin_fiberAlignment)));
+    newItem = new QTableWidgetItem(QString::fromStdString(to_string(m_data.averageAllCells.actin_fiberAlignment)));
     ui.tableWidget_all->setItem(9, 0, newItem);
-    newItem = new QTableWidgetItem(QString::fromStdString(to_string(m_averageAllCells.yap_inNucleus)));
+    newItem = new QTableWidgetItem(QString::fromStdString(to_string(m_data.averageAllCells.yap_inNucleus)));
     ui.tableWidget_all->setItem(10, 0, newItem);
-    newItem = new QTableWidgetItem(QString::fromStdString(to_string(m_averageAllCells.actin_mainAngle)));
+    newItem = new QTableWidgetItem(QString::fromStdString(to_string(m_data.averageAllCells.actin_mainAngle)));
     ui.tableWidget_all->setItem(11, 0, newItem);
 }
 
@@ -187,7 +191,7 @@ void WindowMain::on_pushButton_channels_clicked()
     int dialogCode=channelsWindow.exec();
     if (dialogCode == QDialog::Accepted)
     {
-        m_channels = channelsWindow.set_ChannelTypes();
+        m_data.channels = channelsWindow.set_ChannelTypes();
     }
 }
 
@@ -246,7 +250,7 @@ void WindowMain::on_pushButton_test_clicked()
     vector<double> testRes_3_1 = m_analysisFiberDir.testYvecs(testVectors, 3, 1);
     vector<double> testRes_3_2 = m_analysisFiberDir.testYvecs(testVectors, 4, 2);
     
-    m_channels = m_preprocess.loadNiceCellImages(m_arrayImages, m_cellImages, m_inpDir);
+    m_data.channels = m_preprocess.loadNiceCellImages(m_data.arrayImages, m_data.cellImages, m_inpDir);
     updateGeneralTable();
     
 }
@@ -257,7 +261,7 @@ void WindowMain::on_pushButton_loadImages_clicked()
 
     bool hasNucleus, hasBrightfield, hasActin;
     hasNucleus = hasBrightfield = hasActin = false;
-    for (auto channel : m_channels)
+    for (auto channel : m_data.channels)
     {
         if (channel == channelType::actin) {hasActin = true;}
         //if (channel == channelType::brightfield) { hasBrightfield = true; }
@@ -277,48 +281,48 @@ void WindowMain::on_pushButton_loadImages_clicked()
 
     float confThreshold = ui.doubleSpinBox_confThresh->value();
 
-    m_preprocess.loadImages(m_arrayImages, m_inpDir, m_channels);
+    m_preprocess.loadImages(m_data.arrayImages, m_inpDir, m_data.channels);
 
     //TODO introduce images already are cells, with/without yolo,...
-    m_preprocess.applyYolo(m_arrayImages, m_cellImages, m_arrayImages_withYoloBoxes, confThreshold);
+    m_preprocess.applyYolo(m_data.arrayImages, m_data.cellImages, m_data.arrayImages_withYoloBoxes, confThreshold);
 
     
     bool isDead;
     int failedAnalysisCells=0;
     vector<int> cellsToDelete;
-    for (int i=0; i<m_cellImages.size(); i++)
+    for (int i=0; i<m_data.cellImages.size(); i++)
     {
-        isDead = m_analysis.isDeadCell(m_cellImages[i]);
+        isDead = m_analysis.isDeadCell(m_data.cellImages[i]);
         if (isDead) 
         {
             cellsToDelete.push_back(i);
-            m_deletedCellImages.push_back(m_cellImages[i]);
+            m_data.deletedCellImages.push_back(m_data.cellImages[i]);
             continue; 
         }
 
         try 
         {
-            m_analysis.analyseCell(m_cellImages[i], m_channels);//TODO: what analysis did not work => include e.g. the assert(isContour),...
+            m_analysis.analyseCell(m_data.cellImages[i], m_data.channels);//TODO: what analysis did not work => include e.g. the assert(isContour),...
         }
         catch (...)
         {
             failedAnalysisCells++;
 
             cellsToDelete.push_back(i);
-            m_deletedCellImages.push_back(m_cellImages[i]);
+            m_data.deletedCellImages.push_back(m_data.cellImages[i]);
         }
     }
 
     for(int j = cellsToDelete.size()-1; j>-1; j--)
     {
-        m_cellImages.erase(m_cellImages.begin()+cellsToDelete[j]);
+        m_data.cellImages.erase(m_data.cellImages.begin()+cellsToDelete[j]);
     }
 
-    m_averageAllCells = m_preprocess.getAverageProperties(m_cellImages);
+    m_data.averageAllCells = m_preprocess.getAverageProperties(m_data.cellImages);
     
     updateGeneralTable();
     
-    if (m_cellImages.size()>0)
+    if (m_data.cellImages.size()>0)
     {
         updateGeneralAnalysisTable();
         
@@ -332,13 +336,8 @@ void WindowMain::on_pushButton_loadImages_clicked()
     }
 }
 
-
-void WindowMain::on_pushButton_showImage_clicked()
+void WindowMain::getImageWorked(int successful)
 {
-    updateParameters();
-
-    int successful = m_display.prepareAnalysisToShow();
-
     switch (successful)
     {
     case 1:
@@ -347,40 +346,54 @@ void WindowMain::on_pushButton_showImage_clicked()
     case 2:
         QMessageBox::information(this, "Good Morning", "This channel was not loaded!");
         break;
+    case 3:
+        QMessageBox::information(this, "Good Morning", "No such cells available");
+        break;
     }
+}
+
+void WindowMain::on_pushButton_showImage_clicked()
+{
+    updateParameters();
+
+    int successful = m_display.prepareAnalysisToShow();
+
+    getImageWorked(successful);
 }
 
 void WindowMain::on_pushButton_showPlot_clicked()
 {
     updateParameters();
 
-    m_plotting.plot();
+    int successful = m_plotting.plot();
+
+    getImageWorked(successful);
 }
 
 void WindowMain::on_pushButton_conductAnalysisOnSingleCell_clicked() 
 {
     updateParameters();
-    m_analysis.analyseCell(m_cellImages[m_params.showNumber], m_channels);
-    updateCellAnalysisTable(m_cellImages[m_params.showNumber]);
+    m_analysis.analyseCell(m_data.cellImages[m_params.showNumber], m_data.channels);
+    updateCellAnalysisTable(m_data.cellImages[m_params.showNumber]);
 }
 
 void WindowMain::on_pushButton_conductAnalysisOnAllCells_clicked()
 {
     updateParameters();
     
-    for (int i =0; i<m_cellImages.size(); i++) 
+    for (int i =0; i<m_data.cellImages.size(); i++) 
     {
-        m_analysis.analyseCell(m_cellImages[i], m_channels);
+        m_analysis.analyseCell(m_data.cellImages[i], m_data.channels);
     }
 
-    m_averageAllCells = m_preprocess.getAverageProperties(m_cellImages);
+    m_data.averageAllCells = m_preprocess.getAverageProperties(m_data.cellImages);
     updateGeneralAnalysisTable();
-    updateCellAnalysisTable(m_cellImages[m_params.showNumber]);
+    updateCellAnalysisTable(m_data.cellImages[m_params.showNumber]);
 }
 
 void WindowMain::on_pushButton_writeOut_clicked()
 {
-    if (m_arrayImages.empty())
+    if (m_data.arrayImages.empty())
     {
         QMessageBox::information(this, "Good Morning", "Read in Images!?");
         return;
@@ -396,7 +409,7 @@ void WindowMain::on_pushButton_writeOut_clicked()
 
     if (ui.checkBox_cellArrays->isChecked())
     {
-        for (auto entry : m_arrayImages)
+        for (auto entry : m_data.arrayImages)
         {
             Mat out = entry.createRGBimage();
             help::scaleData(out);
@@ -412,7 +425,7 @@ void WindowMain::on_pushButton_writeOut_clicked()
     }
     if (ui.checkBox_singleCells->isChecked())
     {
-        for (auto entry : m_cellImages)
+        for (auto entry : m_data.cellImages)
         {
             Mat out = entry.createRGBimage();
             help::scaleData(out);
@@ -428,10 +441,10 @@ void WindowMain::on_pushButton_writeOut_clicked()
     }
     if (ui.checkBox_cellArraysWithBoxes->isChecked())
     {
-        for (int i=0;i< m_arrayImages_withYoloBoxes.size();i++)
+        for (int i=0;i< m_data.arrayImages_withYoloBoxes.size();i++)
         {
-            auto x = m_arrayImages_withYoloBoxes[i].depth();
-            imwrite(m_outpDir + m_arrayImages[i].m_name + "_yoloAnalysed.jpg", m_arrayImages_withYoloBoxes[i]);
+            auto x = m_data.arrayImages_withYoloBoxes[i].depth();
+            imwrite(m_outpDir + m_data.arrayImages[i].m_name + "_yoloAnalysed.jpg", m_data.arrayImages_withYoloBoxes[i]);
         }
     }
 }
@@ -445,16 +458,16 @@ void WindowMain::writeAnalysedDataToFile()
 
     myfile << ",Nucleus Area,Nucleus Circularity,Nucleus Roundness,Actin Area,Actin Density, Actin maxSpreadLength,Actin PCA direction,Yap in Nucleus" << "\n";
 
-    for (auto cell : m_cellImages)
+    for (auto cell : m_data.cellImages)
     {
         myfile << cell.m_name << "," << cell.nucleus_area << "," << cell.nucleus_circularity<< "," 
             << cell.nucleus_roundness << "," << cell.actin_area << "," << cell.actin_density << "," 
             << cell.actin_maxLength << "," << cell.actin_mainAngle << "," << cell.yap_inNucleus << "\n";
     }
     
-    myfile <<"Averages," << m_averageAllCells.nucleus_area << "," << m_averageAllCells.nucleus_circularity << "," 
-        << m_averageAllCells.nucleus_roundness << "," << m_averageAllCells.actin_area << "," << m_averageAllCells.actin_density << "," 
-        << m_averageAllCells.actin_maxLength << "," << m_averageAllCells.actin_mainAngle << "," << m_averageAllCells.yap_inNucleus;
+    myfile <<"Averages," << m_data.averageAllCells.nucleus_area << "," << m_data.averageAllCells.nucleus_circularity << "," 
+        << m_data.averageAllCells.nucleus_roundness << "," << m_data.averageAllCells.actin_area << "," << m_data.averageAllCells.actin_density << "," 
+        << m_data.averageAllCells.actin_maxLength << "," << m_data.averageAllCells.actin_mainAngle << "," << m_data.averageAllCells.yap_inNucleus;
 
 }
 

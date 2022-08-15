@@ -3,7 +3,7 @@
 using namespace std;
 using namespace cv;
 
-AnalysisFiberDirection::AnalysisFiberDirection(ParametersFromUI& p) :params(p) {};
+AnalysisFiberDirection::AnalysisFiberDirection(ParametersUI& p) :params(p) {};
 
 
 double getAngleFromVectors(vector<Point2d> vectors)

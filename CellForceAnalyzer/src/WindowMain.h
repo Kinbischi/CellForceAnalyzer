@@ -7,10 +7,12 @@
 #include "Preprocess.h"
 #include "Cell.h"
 #include "Analysis.h"
-#include "ParametersFromUI.h"
+#include "ParametersUI.h"
 #include "Plotting.h"
 #include "AnalysisFiberDirection.h"
 #include "Display.h"
+#include "dataContainer.h"
+
 
 class WindowMain : public QMainWindow
 {
@@ -40,12 +42,9 @@ private:
     void updateGeneralAnalysisTable();
     void updateGeneralTable();
 
-    bool getImageToShow(cv::Mat&, std::string&, double&);
-    
-    //void plotData(std::vector<double>, bool, std::vector<double> = std::vector<double>());
-
     void writeAnalysedDataToFile();
     void updateParameters();
+    void getImageWorked(int);
 
     Ui::WindowMainClass ui;
 
@@ -54,18 +53,10 @@ private:
 
     int m_imageNumber_show=0;
 
-    //vector with order in which image channels are loaded
-    std::vector<channelType> m_channels;
-
-    std::vector<CustomImage> m_arrayImages;
-    std::vector<cv::Mat> m_arrayImages_withYoloBoxes;
-    std::vector<Cell> m_cellImages;
-    std::vector<Cell> m_deletedCellImages;
-
-    Cell m_averageAllCells;
+    dataContainer m_data;
 
     Preprocess m_preprocess;
-    ParametersFromUI m_params; //Parameters from UI
+    ParametersUI m_params; //Parameters from UI
     Analysis m_analysis;
     Plotting m_plotting;
     AnalysisFiberDirection m_analysisFiberDir;
@@ -114,3 +105,6 @@ private:
 
 //TODO for show plot => try and catch
 // separate cells dead analysis, analysis, yolo,... => always: with checkbox for excluding cells that were bad (dead, analysisfailed)
+
+//todo => handle besser wann analysen erlaubt => nicht menr if ().size()>0 usw => bool analysisConducted in parameters zb, bool imagesLoaded
+//=> zb vor plotting funktion abfragen

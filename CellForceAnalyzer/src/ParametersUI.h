@@ -4,10 +4,14 @@
 
 
 //TODO: struct?
-class ParametersFromUI
+class ParametersUI
 {
 
 public:
+	//loading
+	bool loadAsCells;
+	bool loadthreeChannels;
+
 	// depiction
 	int showNumber;
 	double scaleFactor;

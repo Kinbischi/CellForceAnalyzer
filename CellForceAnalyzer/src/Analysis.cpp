@@ -15,7 +15,7 @@
 using namespace std;
 using namespace cv;
 
-Analysis::Analysis(ParametersFromUI& parameters) :m_parameters(parameters) {}
+Analysis::Analysis(ParametersUI& parameters) :m_parameters(parameters) {}
 
 void getRadii(vector<Point> contour, Point centroid, vector<Point>& outPoints, double& innerRadius, double& outerRadius)
 {

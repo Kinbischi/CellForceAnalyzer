@@ -12,7 +12,7 @@ namespace plt = matplotlibcpp;
 #endif
 
 
-Plotting::Plotting(ParametersFromUI& p, AnalysisFiberDirection& a, std::vector<Cell>& c) :params(p), analysisFiberDir(a), cellImages(c) {};
+Plotting::Plotting(ParametersUI& p, dataContainer& d, AnalysisFiberDirection& a) :params(p), data(d), analysisFiberDir(a) {};
 
 string Plotting::getPlotTitle(plotFeatureType CFType)
 {
@@ -142,6 +142,7 @@ vector<double> Plotting::createX(vector<double> data1, bool plottingAngles)
 vector<int> Plotting::createY(vector<double> data, vector<double> x)
 {
     std::vector<int> y(x.size());
+
     double spacing = x[1] - x[0];
 
     for (int i = 0; i < data.size(); i++)
@@ -209,51 +210,45 @@ void Plotting::plotSomething(vector<double> x, vector<double> y, plotFeatureType
 #endif
 }
 
-/*
-int Plotting::getImageToPlot(Mat& outImg)
-{
-    if (arrayImages.empty()) { return 1; }
 
+int Plotting::getCellImageToPlot(Mat& outImg)
+{
     int imageNumber = params.showNumber;
     channelType channel = params.channel;
     CustomImage image;
     
     if (params.singleCells)
     {
-        if (cellImages.empty()) { return false; }
-        if (scale == -1) { scale = 4; }
-        image = cellImages[imageNumber];
+        if (data.cellImages.empty()) { return 3; }
+        image = data.cellImages[imageNumber];
         outImg = image.getChannel(channel);
-        name = image.getName(channel);
     }
-    if (m_params.deletedCells)
+    if (params.deletedCells)
     {
-        if (m_deletedCellImages.empty()) { return false; }
-        if (scale == -1) { scale = 4; }
-        image = m_deletedCellImages[imageNumber];
+        if (data.deletedCellImages.empty()) { return 3; }
+        image = data.deletedCellImages[imageNumber];
         outImg = image.getChannel(channel);
-        name = image.getName(channel);
     }
-}
-*/
 
-void Plotting::plot()
+    if (outImg.empty()) { return 2; }
+
+    outImg = outImg.clone();
+
+    return 0;
+}
+
+
+int Plotting::plot()
 {
     Mat image;
-    int pltType = static_cast<int>(params.plotFeatType);
-    if (pltType == 0 || pltType == 1 || pltType == 2) // single cell
+    plotFeatureType type = params.plotFeatType;
+    if (type == plotFeatureType::actFibersOptThresh || type == plotFeatureType::actFibersIntensity || type == plotFeatureType::actFibersBoth)
     {
-        int cellNumber = params.showNumber;
-        if (cellNumber < 0 || cellNumber >= cellImages.size())
-        {
-            return;
-        }
-        
-        double randomScale;
-        string randomName;
-        //getImageToShow(image, randomName, randomScale);
+        int successful = getCellImageToPlot(image);
+        if (!(successful == 0)) { return successful; }
     }
 
+    // single cell plots
     if (params.plotFeatType == plotFeatureType::actFibersIntensity)
     {
         vector<double> resultingAngles;
@@ -288,13 +283,16 @@ void Plotting::plot()
 
         plotData(resultingAnglesoptThresh, true, resultingAnglesIntensity);
     }
+
+    //all cells plots
     else
     {
         vector<double> plottingData;
-        for (int i = 0; i < cellImages.size(); i++)
+        for (int i = 0; i < data.cellImages.size(); i++)
         {
-            plottingData.push_back(cellImages[i].getQuantity(params.plotFeatType));
+            plottingData.push_back(data.cellImages[i].getQuantity(params.plotFeatType));
         }
         plotData(plottingData, false);
     }
+    return 0;
 }

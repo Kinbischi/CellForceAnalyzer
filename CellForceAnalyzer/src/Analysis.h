@@ -2,14 +2,14 @@
 
 
 #include "Cell.h"
-#include "ParametersFromUI.h"
+#include "ParametersUI.h"
 #include "helperFunctions.h"
 
 class Analysis
 {
 
 public:
-	Analysis(ParametersFromUI&);
+	Analysis(ParametersUI&);
 
 	void analyseCell(Cell&, std::vector<channelType>);
 
@@ -23,6 +23,6 @@ private:
 
 	void analyseActin(Cell&);
 
-	ParametersFromUI& m_parameters;
+	ParametersUI& m_parameters;
 };
 

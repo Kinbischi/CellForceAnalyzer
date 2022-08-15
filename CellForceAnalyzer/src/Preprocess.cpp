@@ -15,6 +15,8 @@ using namespace std;
 using namespace cv;
 namespace fs = std::filesystem;
 
+Preprocess::Preprocess(ParametersUI& p, dataContainer& d) :params(p), data(d) {};
+
 // if there is numbers in the start of the image => can happen that images are not loaded in the same order as in the windows folder
 void Preprocess::loadImages(vector<CustomImage>& images, string inpDir, vector<channelType> channelsOrder)
 {

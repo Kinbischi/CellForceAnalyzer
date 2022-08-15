@@ -6,46 +6,46 @@
 using namespace std;
 using namespace cv;
 
-Display::Display(ParametersFromUI& p, std::vector<CustomImage>& arr, std::vector<cv::Mat>& y, std::vector<Cell>& c, std::vector<Cell>& d, Analysis& anal, AnalysisFiberDirection& analFiber) :
-    m_params(p), m_arrayImages(arr), m_arrayImages_withYoloBoxes(y), m_cellImages(c), m_deletedCellImages(d), m_analysis(anal), m_analysisFiberDir(analFiber) {};
+Display::Display(ParametersUI& p, dataContainer& d, Analysis& anal, AnalysisFiberDirection& analFiber) :
+    params(p), data(d),analysis(anal), analysisFiberDir(analFiber) {};
 
 
 int Display::getImageToShow(Mat& outImg, string& name, double& scale)
 {
-    if (m_arrayImages.empty()) { return 1; }
+    if (data.arrayImages.empty()) { return 1; }
 
-    int imageNumber = m_params.showNumber;
-    channelType channel = m_params.channel;
+    int imageNumber = params.showNumber;
+    channelType channel = params.channel;
     CustomImage image;
 
-    if (m_params.cellArrays)
+    if (params.cellArrays)
     {
         if (scale == -1) { scale = 0.4; }
-        image = m_arrayImages[imageNumber];
+        image = data.arrayImages[imageNumber];
         outImg = image.getChannel(channel);
         name = image.getName(channel);
     }
-    if (m_params.singleCells)
+    if (params.singleCells)
     {
-        if (m_cellImages.empty()) { return false; }
+        if (data.cellImages.empty()) { return 3; }
         if (scale == -1) { scale = 4; }
-        image = m_cellImages[imageNumber];
+        image = data.cellImages[imageNumber];
         outImg = image.getChannel(channel);
         name = image.getName(channel);
     }
-    if (m_params.deletedCells)
+    if (params.deletedCells)
     {
-        if (m_deletedCellImages.empty()) { return false; }
+        if (data.deletedCellImages.empty()) { return 3; }
         if (scale == -1) { scale = 4; }
-        image = m_deletedCellImages[imageNumber];
+        image = data.deletedCellImages[imageNumber];
         outImg = image.getChannel(channel);
         name = image.getName(channel);
     }
-    if (m_params.cellArraysWithBoxes)
+    if (params.cellArraysWithBoxes)
     {
         if (scale == -1) { scale = 0.4; }
-        image = m_arrayImages[imageNumber]; // only for name
-        outImg = m_arrayImages_withYoloBoxes[imageNumber];
+        image = data.arrayImages[imageNumber]; // only for name
+        outImg = data.arrayImages_withYoloBoxes[imageNumber];
         name = image.getName();
     }
 
@@ -58,12 +58,12 @@ int Display::getImageToShow(Mat& outImg, string& name, double& scale)
 
 Mat Display::thresholdImage(Mat image, string& name)
 {
-    switch (m_params.threshType)
+    switch (params.threshType)
     {
     case thresholdingType::manual:
 
-        help::thresh(image, m_params.manualThreshold);
-        name = name + "_threshManually" + to_string(m_params.manualThreshold);
+        help::thresh(image, params.manualThreshold);
+        name = name + "_threshManually" + to_string(params.manualThreshold);
         break;
 
     case thresholdingType::otsu:
@@ -72,8 +72,8 @@ Mat Display::thresholdImage(Mat image, string& name)
         break;
 
     case thresholdingType::squarePCAoptimizedThresh:
-        m_analysisFiberDir.getPCAoptThresholdedImage(image);
-        name = name + "_threshPCAopt" + "_Length" + to_string(m_params.PCAsquareLength) + "_minEigRatio" + to_string(m_params.PCAminEigValRatio);
+        analysisFiberDir.getPCAoptThresholdedImage(image);
+        name = name + "_threshPCAopt" + "_Length" + to_string(params.PCAsquareLength) + "_minEigRatio" + to_string(params.PCAminEigValRatio);
         break;
     }
     return image;
@@ -81,8 +81,8 @@ Mat Display::thresholdImage(Mat image, string& name)
 
 int Display::prepareAnalysisToShow()
 {
-    double scaleFactor = m_params.scaleFactor; 
-    bool replacingMode = m_params.replacingMode;
+    double scaleFactor = params.scaleFactor;
+    bool replacingMode = params.replacingMode;
     Mat image;
     string name;
 
@@ -94,52 +94,53 @@ int Display::prepareAnalysisToShow()
     {
         Mat thresholdedImage = thresholdImage(image, name);
 
-        if ((m_params.withAnalysis && m_params.dispType == displayType::thresholded) || (!m_params.withAnalysis && m_params.threshType != thresholdingType::None))
+        if ((params.withAnalysis && params.dispType == displayType::thresholded) || (!params.withAnalysis && params.threshType != thresholdingType::None))
         {
             image = thresholdedImage;
         }
 
-
         //apply analysis
         bool analysisSuccessful = false;
-        if (m_params.variousAnalysis)
+        if (params.variousAnalysis)
         {
-            analysisSuccessful = m_analysis.analyseShape(image);
+            analysisSuccessful = analysis.analyseShape(image);
             name = name + "_roundAnalysed";
         }
-        else if (m_params.fiberPCA)
+        else if (params.fiberPCA)
         {
             vector<double> random;
-            if (m_params.threshType == thresholdingType::None) //intensity mode
+            if (params.threshType == thresholdingType::None) //intensity mode
             {
-                analysisSuccessful = m_analysisFiberDir.analyseWithPCA(image, random);
+                analysisSuccessful = analysisFiberDir.analyseWithPCA(image, random);
             }
             else
             {
-                analysisSuccessful = m_analysisFiberDir.analyseWithPCA(image, random, thresholdedImage);
+                analysisSuccessful = analysisFiberDir.analyseWithPCA(image, random, thresholdedImage);
             }
 
             name = name + "_pcaAnalysed";
         }
-        else if (m_params.edgeDetection)
+        else if (params.edgeDetection)
         {
-            m_analysis.edgeDetectionCanny(image);
-            name = name + "_edge" + "_highthresh" + to_string(m_params.highThreshCanny);
+            analysis.edgeDetectionCanny(image);
+            name = name + "_edge" + "_highthresh" + to_string(params.highThreshCanny);
         }
-        else if (m_params.FAdetection)
+        else if (params.FAdetection)
         {
-            m_analysis.focalAdhesiondetection(image);
-            name = name + "_circles" + "_highthresh" + to_string(m_params.highThreshCanny) + "_minCircleConf" +
-                to_string(m_params.FAminCircleConfidence) + "_minDist" + to_string(m_params.FAminDist) + "_dp" + to_string(m_params.FAdp);
+            analysis.focalAdhesiondetection(image);
+            name = name + "_circles" + "_highthresh" + to_string(params.highThreshCanny) + "_minCircleConf" +
+                to_string(params.FAminCircleConfidence) + "_minDist" + to_string(params.FAminDist) + "_dp" + to_string(params.FAdp);
         }
     }
 
-    if (!m_params.withAnalysis)//TODO: check what happens for unscaled 16 bit image that were analyzed => probs not scaled ;(
+    if (!params.withAnalysis)//TODO: check what happens for unscaled 16 bit image that were analyzed => probs not scaled ;(
     {
         help::scaleData(image);
     }
 
-    string windowName = m_params.replacingMode ? "Image" : name;
+    string windowName = params.replacingMode ? "Image" : name;
 
-    help::showWindow(image, m_params.scaleFactor, windowName);
+    help::showWindow(image, scaleFactor, windowName);
+
+    return 0;
 }
