@@ -4,7 +4,6 @@
 #include <opencv2/imgproc.hpp>
 #include <opencv2/imgcodecs.hpp>
 
-#include "helperFunctions.h"
 
 using namespace cv;
 using namespace std;
@@ -173,8 +172,16 @@ Mat CustomImage::createRGBimage()
 {
 	Mat rgbImage, imgRed, imgGreen, imgBlue;
 	vector<Mat> allChannels;
-	imgRed = m_brightfieldChannel;
-	imgGreen = m_actinChannel;
+	if (!m_brightfieldChannel.empty())
+	{
+		imgRed = m_brightfieldChannel;
+	}
+	else if(!m_vinculinChannel.empty())
+	{
+		imgRed = m_vinculinChannel;
+	}
+	
+	imgGreen = m_actinChannel; 
 	imgBlue = m_nucleusChannel;
 
 	allChannels.push_back(imgBlue);

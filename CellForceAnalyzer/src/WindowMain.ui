@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>751</width>
-    <height>867</height>
+    <height>877</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -83,7 +83,10 @@
          <item>
           <widget class="QCheckBox" name="checkBox_3channelsPerImage">
            <property name="text">
-            <string>3 channels per image</string>
+            <string>3 stainings per image</string>
+           </property>
+           <property name="checked">
+            <bool>true</bool>
            </property>
           </widget>
          </item>
@@ -92,18 +95,15 @@
            <property name="text">
             <string>As Cells</string>
            </property>
+           <property name="checked">
+            <bool>true</bool>
+           </property>
           </widget>
          </item>
          <item>
-          <widget class="QPushButton" name="pushButton_channels">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
+          <widget class="QCheckBox" name="checkBox_removeBadCells">
            <property name="text">
-            <string>Set Channels</string>
+            <string>remove Cells</string>
            </property>
           </widget>
          </item>
@@ -153,6 +153,19 @@
             </size>
            </property>
           </spacer>
+         </item>
+         <item>
+          <widget class="QPushButton" name="pushButton_channels">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="text">
+            <string>Set Channels</string>
+           </property>
+          </widget>
          </item>
         </layout>
        </item>
@@ -302,9 +315,9 @@
           </widget>
          </item>
          <item>
-          <widget class="QRadioButton" name="radioButton_deletedCells">
+          <widget class="QRadioButton" name="radioButton_removedCells">
            <property name="text">
-            <string>Deleted Cells</string>
+            <string>Removed Cells</string>
            </property>
           </widget>
          </item>
@@ -349,6 +362,13 @@
           </widget>
          </item>
          <item>
+          <widget class="QLabel" name="label_24">
+           <property name="text">
+            <string>Staining:</string>
+           </property>
+          </widget>
+         </item>
+         <item>
           <widget class="QComboBox" name="comboBox_showImage">
            <property name="minimumSize">
             <size>
@@ -357,7 +377,7 @@
             </size>
            </property>
            <property name="currentText">
-            <string>Brightfield</string>
+            <string>Actin</string>
            </property>
            <item>
             <property name="text">
@@ -512,20 +532,11 @@
           </widget>
          </item>
          <item>
-          <spacer name="horizontalSpacer_4">
-           <property name="orientation">
-            <enum>Qt::Horizontal</enum>
+          <widget class="QLabel" name="label_25">
+           <property name="text">
+            <string>Plot type:</string>
            </property>
-           <property name="sizeType">
-            <enum>QSizePolicy::Fixed</enum>
-           </property>
-           <property name="sizeHint" stdset="0">
-            <size>
-             <width>10</width>
-             <height>20</height>
-            </size>
-           </property>
-          </spacer>
+          </widget>
          </item>
          <item>
           <widget class="QComboBox" name="comboBox_showPlot">
@@ -673,7 +684,7 @@
           </widget>
          </item>
          <item>
-          <spacer name="horizontalSpacer_7">
+          <spacer name="horizontalSpacer_5">
            <property name="orientation">
             <enum>Qt::Horizontal</enum>
            </property>
@@ -684,6 +695,27 @@
             </size>
            </property>
           </spacer>
+         </item>
+         <item>
+          <widget class="QLabel" name="label_12">
+           <property name="text">
+            <string>Blurring:</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QCheckBox" name="checkBox_weakBlur">
+           <property name="text">
+            <string>Weak Blur</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QCheckBox" name="checkBox_strongBlur">
+           <property name="text">
+            <string>Strong Blur</string>
+           </property>
+          </widget>
          </item>
         </layout>
        </item>
@@ -846,7 +878,7 @@
             <enum>Qt::Horizontal</enum>
            </property>
            <property name="sizeType">
-            <enum>QSizePolicy::Fixed</enum>
+            <enum>QSizePolicy::Expanding</enum>
            </property>
            <property name="sizeHint" stdset="0">
             <size>
@@ -904,19 +936,6 @@
             <double>2.000000000000000</double>
            </property>
           </widget>
-         </item>
-         <item>
-          <spacer name="horizontalSpacer">
-           <property name="orientation">
-            <enum>Qt::Horizontal</enum>
-           </property>
-           <property name="sizeHint" stdset="0">
-            <size>
-             <width>40</width>
-             <height>20</height>
-            </size>
-           </property>
-          </spacer>
          </item>
         </layout>
        </item>

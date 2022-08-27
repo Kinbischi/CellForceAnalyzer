@@ -21,8 +21,8 @@ using namespace cv;
 
 
 WindowMain::WindowMain(QWidget* parent)
-    : QMainWindow(parent), m_preprocess(m_params,m_data), m_analysis(m_params), m_analysisFiberDir(m_params), m_plotting(m_params, m_data, m_analysisFiberDir),
-    m_display(m_params, m_data, m_analysis, m_analysisFiberDir)
+    : QMainWindow(parent), m_preprocess(m_params,m_data), m_analysisFiberDir(m_params), m_analysis(m_params,m_analysisFiberDir), 
+    m_plotting(m_params, m_data, m_analysisFiberDir), m_display(m_params, m_data, m_analysis, m_analysisFiberDir)
 {
     ui.setupUi(this);
 
@@ -31,7 +31,7 @@ WindowMain::WindowMain(QWidget* parent)
     connect(ui.radioButton_cellArrays, SIGNAL(toggled(bool)), this, SLOT(radioButtonArraysChanged(bool)));
     connect(ui.radioButton_cellArraysWithBoxes, SIGNAL(toggled(bool)), this, SLOT(radioButtonArraysChanged(bool)));
     connect(ui.radioButton_singleCells, SIGNAL(toggled(bool)), this, SLOT(radioButtonCellsChanged(bool)));
-    connect(ui.radioButton_deletedCells, SIGNAL(toggled(bool)), this, SLOT(radioButtonDeletedCellsChanged(bool)));
+    connect(ui.radioButton_removedCells, SIGNAL(toggled(bool)), this, SLOT(radioButtonRemovedCellsChanged(bool)));
 
     //it grabs the channels (order of input channels) as default values from the .ui file
     WindowChannels channelsWindow;
@@ -41,21 +41,23 @@ WindowMain::WindowMain(QWidget* parent)
 
 void WindowMain::updateParameters()
 {
+    //loading
+    m_params.loadAsCells = ui.checkBox_loadAsCells->isChecked();
+    m_params.loadthreeChannels = ui.checkBox_3channelsPerImage->isChecked();
+    m_params.channel = static_cast<channelType>(ui.comboBox_showImage->currentIndex());
+
+    // showing
     m_params.showNumber = ui.spinBox_showImage->value();
     m_params.scaleFactor = ui.doubleSpinBox_scale->value();
     m_params.replacingMode = ui.checkBox_replace->isChecked();
 
-    //loading
-    m_params.loadAsCells = ui.checkBox_loadAsCells->isChecked();
-    m_params.loadthreeChannels = ui.checkBox_3channelsPerImage->isChecked();
-
-    m_params.channel = static_cast<channelType>(ui.comboBox_showImage->currentIndex());
-
     m_params.cellArrays = ui.radioButton_cellArrays->isChecked();
     m_params.singleCells = ui.radioButton_singleCells->isChecked();
-    m_params.deletedCells = ui.radioButton_deletedCells->isChecked();
+    m_params.removedCells = ui.radioButton_removedCells->isChecked();
     m_params.cellArraysWithBoxes = ui.radioButton_cellArraysWithBoxes->isChecked();
 
+    m_params.blurWeak = ui.checkBox_weakBlur->isChecked();
+    m_params.blurStrong = ui.checkBox_strongBlur->isChecked();
     m_params.threshType = static_cast<thresholdingType>(ui.comboBox_thresholding->currentIndex());
     m_params.dispType = static_cast<displayType>(ui.comboBox_display->currentIndex());
     m_params.plotFeatType = static_cast<plotFeatureType>(ui.comboBox_showPlot->currentIndex());
@@ -120,12 +122,12 @@ void WindowMain::radioButtonCellsChanged(bool index)
     }
 }
 
-void WindowMain::radioButtonDeletedCellsChanged(bool index)
+void WindowMain::radioButtonRemovedCellsChanged(bool index)
 {
     if (index)
     {
-        if (m_data.deletedCellImages.empty()) { ui.spinBox_showImage->setMaximum(0); }
-        else { ui.spinBox_showImage->setMaximum(m_data.deletedCellImages.size() - 1); }
+        if (m_data.removedCellImages.empty()) { ui.spinBox_showImage->setMaximum(0); }
+        else { ui.spinBox_showImage->setMaximum(m_data.removedCellImages.size() - 1); }
         ui.tableWidget_cell->clearContents();
     }
 }
@@ -136,7 +138,7 @@ void WindowMain::updateGeneralTable()
     ui.tableWidget_all->setItem(0, 0, newItem);
     QTableWidgetItem* newItem2 = new QTableWidgetItem(QString::fromStdString(to_string(m_data.cellImages.size())));
     ui.tableWidget_all->setItem(1, 0, newItem2);
-    QTableWidgetItem* newItem3 = new QTableWidgetItem(QString::fromStdString(to_string(m_data.deletedCellImages.size())));
+    QTableWidgetItem* newItem3 = new QTableWidgetItem(QString::fromStdString(to_string(m_data.removedCellImages.size())));
     ui.tableWidget_all->setItem(2, 0, newItem3);
 }
 
@@ -152,11 +154,11 @@ void WindowMain::updateCellAnalysisTable(Cell cell)
     ui.tableWidget_cell->setItem(2, 0, newItem);
     newItem = new QTableWidgetItem(QString::fromStdString(to_string(cell.actin_area)));
     ui.tableWidget_cell->setItem(3, 0, newItem);
-    newItem = new QTableWidgetItem(QString::fromStdString(to_string(cell.actin_density)));
+    newItem = new QTableWidgetItem(QString::fromStdString(to_string(cell.actin_avgIntensity)));
     ui.tableWidget_cell->setItem(4, 0, newItem);
-    newItem = new QTableWidgetItem(QString::fromStdString(to_string(cell.actin_fiberAlignment)));
+    newItem = new QTableWidgetItem(QString::fromStdString(to_string(cell.actin_fiberAlignmentValue)));
     ui.tableWidget_cell->setItem(5, 0, newItem);
-    newItem = new QTableWidgetItem(QString::fromStdString(to_string(100*cell.yap_inNucleus)+" %"));
+    newItem = new QTableWidgetItem(QString::fromStdString(to_string(100*cell.yap_percentageInNucleus)+" %"));
     ui.tableWidget_cell->setItem(6, 0, newItem);
     newItem = new QTableWidgetItem(QString::fromStdString(to_string(cell.actin_mainAngle)));
     ui.tableWidget_cell->setItem(7, 0, newItem);
@@ -173,11 +175,11 @@ void WindowMain::updateGeneralAnalysisTable()
     ui.tableWidget_all->setItem(6, 0, newItem);
     newItem = new QTableWidgetItem(QString::fromStdString(to_string(m_data.averageAllCells.actin_area)));
     ui.tableWidget_all->setItem(7, 0, newItem);
-    newItem = new QTableWidgetItem(QString::fromStdString(to_string(m_data.averageAllCells.actin_density)));
+    newItem = new QTableWidgetItem(QString::fromStdString(to_string(m_data.averageAllCells.actin_avgIntensity)));
     ui.tableWidget_all->setItem(8, 0, newItem);
-    newItem = new QTableWidgetItem(QString::fromStdString(to_string(m_data.averageAllCells.actin_fiberAlignment)));
+    newItem = new QTableWidgetItem(QString::fromStdString(to_string(m_data.averageAllCells.actin_fiberAlignmentValue)));
     ui.tableWidget_all->setItem(9, 0, newItem);
-    newItem = new QTableWidgetItem(QString::fromStdString(to_string(m_data.averageAllCells.yap_inNucleus)));
+    newItem = new QTableWidgetItem(QString::fromStdString(to_string(m_data.averageAllCells.yap_percentageInNucleus)));
     ui.tableWidget_all->setItem(10, 0, newItem);
     newItem = new QTableWidgetItem(QString::fromStdString(to_string(m_data.averageAllCells.actin_mainAngle)));
     ui.tableWidget_all->setItem(11, 0, newItem);
@@ -279,62 +281,59 @@ void WindowMain::on_pushButton_loadImages_clicked()
         m_inpDir = help::copiedDirectoryToNiceString(inName);
     }
 
+    m_preprocess.loadImages(m_inpDir);
+
+    if (ui.checkBox_removeBadCells->isChecked() && m_data.cellImages.size())
+    {
+        bool isDead;
+        vector<int> cellsToDelete;
+        for (int i = 0; i < m_data.cellImages.size(); i++)
+        {
+            isDead = m_analysis.isDeadCell(m_data.cellImages[i]);
+            if (isDead)
+            {
+                cellsToDelete.push_back(i);
+                m_data.removedCellImages.push_back(m_data.cellImages[i]);
+            }
+        }
+
+        for (int j = cellsToDelete.size() - 1; j > -1; j--)
+        {
+            m_data.cellImages.erase(m_data.cellImages.begin() + cellsToDelete[j]);
+        }
+    }
+
+    updateGeneralTable();
+
+
+}
+
+void WindowMain::on_pushButton_applyYolo_clicked()
+{
     float confThreshold = ui.doubleSpinBox_confThresh->value();
-
-    m_preprocess.loadImages(m_data.arrayImages, m_inpDir, m_data.channels);
-
-    //TODO introduce images already are cells, with/without yolo,...
     m_preprocess.applyYolo(m_data.arrayImages, m_data.cellImages, m_data.arrayImages_withYoloBoxes, confThreshold);
 
-    
-    bool isDead;
-    int failedAnalysisCells=0;
-    vector<int> cellsToDelete;
-    for (int i=0; i<m_data.cellImages.size(); i++)
+    if (ui.checkBox_removeBadCells->isChecked() && m_data.cellImages.size()) //TODO: change to function => also alter in load imgs
     {
-        isDead = m_analysis.isDeadCell(m_data.cellImages[i]);
-        if (isDead) 
+        bool isDead;
+        vector<int> cellsToDelete;
+        for (int i = 0; i < m_data.cellImages.size(); i++)
         {
-            cellsToDelete.push_back(i);
-            m_data.deletedCellImages.push_back(m_data.cellImages[i]);
-            continue; 
+            isDead = m_analysis.isDeadCell(m_data.cellImages[i]);
+            if (isDead)
+            {
+                cellsToDelete.push_back(i);
+                m_data.removedCellImages.push_back(m_data.cellImages[i]);
+            }
         }
 
-        try 
+        for (int j = cellsToDelete.size() - 1; j > -1; j--)
         {
-            m_analysis.analyseCell(m_data.cellImages[i], m_data.channels);//TODO: what analysis did not work => include e.g. the assert(isContour),...
+            m_data.cellImages.erase(m_data.cellImages.begin() + cellsToDelete[j]);
         }
-        catch (...)
-        {
-            failedAnalysisCells++;
-
-            cellsToDelete.push_back(i);
-            m_data.deletedCellImages.push_back(m_data.cellImages[i]);
-        }
-    }
-
-    for(int j = cellsToDelete.size()-1; j>-1; j--)
-    {
-        m_data.cellImages.erase(m_data.cellImages.begin()+cellsToDelete[j]);
-    }
-
-    m_data.averageAllCells = m_preprocess.getAverageProperties(m_data.cellImages);
-    
-    updateGeneralTable();
-    
-    if (m_data.cellImages.size()>0)
-    {
-        updateGeneralAnalysisTable();
-        
-        radioButtonCellsChanged(ui.radioButton_singleCells->isChecked());
-    }
-
-    if(failedAnalysisCells>0)
-    {
-        auto temp = to_string(failedAnalysisCells) + " cells ended up in deleted cells";
-        QMessageBox::information(this, "The analysis failed for some cells", temp.c_str());
     }
 }
+
 
 void WindowMain::getImageWorked(int successful)
 {
@@ -380,15 +379,45 @@ void WindowMain::on_pushButton_conductAnalysisOnSingleCell_clicked()
 void WindowMain::on_pushButton_conductAnalysisOnAllCells_clicked()
 {
     updateParameters();
+    if (m_data.cellImages.size() == 0) { return; }
     
+    int failedAnalysisCells = 0;
+    vector<int> cellsToDelete;
     for (int i =0; i<m_data.cellImages.size(); i++) 
     {
-        m_analysis.analyseCell(m_data.cellImages[i], m_data.channels);
+        try
+        {
+            m_analysis.analyseCell(m_data.cellImages[i], m_data.channels); //TODO: what analysis did not work => include e.g. the assert(isContour),...
+        }
+        catch (...)
+        {
+            failedAnalysisCells++;
+
+            cellsToDelete.push_back(i);
+            m_data.removedCellImages.push_back(m_data.cellImages[i]);
+        }
+    }
+
+    for (int j = cellsToDelete.size() - 1; j > -1; j--)
+    {
+        m_data.cellImages.erase(m_data.cellImages.begin() + cellsToDelete[j]);
     }
 
     m_data.averageAllCells = m_preprocess.getAverageProperties(m_data.cellImages);
+    updateGeneralTable();
     updateGeneralAnalysisTable();
     updateCellAnalysisTable(m_data.cellImages[m_params.showNumber]);
+
+    if (failedAnalysisCells > 0)
+    {
+        auto temp = to_string(failedAnalysisCells) + " cells ended up in deleted cells";
+        QMessageBox::information(this, "The analysis failed for some cells", temp.c_str());
+    }
+    if (ui.radioButton_singleCells->isChecked())
+    {
+        radioButtonCellsChanged(true); // TODO => change => so that it also works for loading usw....
+    }
+        
 }
 
 void WindowMain::on_pushButton_writeOut_clicked()
@@ -461,13 +490,13 @@ void WindowMain::writeAnalysedDataToFile()
     for (auto cell : m_data.cellImages)
     {
         myfile << cell.m_name << "," << cell.nucleus_area << "," << cell.nucleus_circularity<< "," 
-            << cell.nucleus_roundness << "," << cell.actin_area << "," << cell.actin_density << "," 
-            << cell.actin_maxLength << "," << cell.actin_mainAngle << "," << cell.yap_inNucleus << "\n";
+            << cell.nucleus_roundness << "," << cell.actin_area << "," << cell.actin_avgIntensity << "," 
+            << cell.actin_maxLength << "," << cell.actin_mainAngle << "," << cell.yap_percentageInNucleus << "\n";
     }
     
     myfile <<"Averages," << m_data.averageAllCells.nucleus_area << "," << m_data.averageAllCells.nucleus_circularity << "," 
-        << m_data.averageAllCells.nucleus_roundness << "," << m_data.averageAllCells.actin_area << "," << m_data.averageAllCells.actin_density << "," 
-        << m_data.averageAllCells.actin_maxLength << "," << m_data.averageAllCells.actin_mainAngle << "," << m_data.averageAllCells.yap_inNucleus;
+        << m_data.averageAllCells.nucleus_roundness << "," << m_data.averageAllCells.actin_area << "," << m_data.averageAllCells.actin_avgIntensity << "," 
+        << m_data.averageAllCells.actin_maxLength << "," << m_data.averageAllCells.actin_mainAngle << "," << m_data.averageAllCells.yap_percentageInNucleus;
 
 }
 

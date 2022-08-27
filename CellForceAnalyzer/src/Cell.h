@@ -15,18 +15,24 @@ public:
 
     double getQuantity(plotFeatureType);
 
+    //Nucleus
     int nucleus_area;
+    double nucleus_avgIntensity;
     double nucleus_circularity;
     double nucleus_roundness;
     
-    double yap_inNucleus; // percentage of the intensity
-    
+    //YAP
+    double yap_percentageInNucleus;
+    double yap_avgIntensityInNucleus;
+    double yap_avgIntensityOutsideNucleus;
+
+    //Actin
     int actin_area;
-    double actin_density;
+    double actin_avgIntensity;
     double actin_maxLength;
     std::vector<double> actin_fibreAnglesPCA; // in degree from 0 to 180 counterclockwise (starting from the right/ x axis)
     double actin_mainAngle;
-    double actin_fiberAlignment;
+    double actin_fiberAlignmentValue;
 
 };
 

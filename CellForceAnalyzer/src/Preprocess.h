@@ -12,7 +12,7 @@ class Preprocess
 {
 public:
 	Preprocess(ParametersUI&, dataContainer&);
-	void loadImages(std::vector<CustomImage>&, std::string,std::vector<channelType>);
+	void loadImages(std::string);
 
 	std::vector<channelType> loadNiceCellImages(std::vector<CustomImage>&, std::vector<Cell>&, std::string);
 

@@ -20,7 +20,7 @@ public:
 
 	bool cellArrays;
 	bool singleCells;
-	bool deletedCells;
+	bool removedCells;
 	bool cellArraysWithBoxes;
 
 	thresholdingType threshType;
@@ -34,6 +34,10 @@ public:
 	bool variousAnalysis;
 
 	// parameters:
+	 
+	// blurring
+	bool blurWeak;
+	bool blurStrong;
 	// thresholding
 	int manualThreshold;
 	// PCA

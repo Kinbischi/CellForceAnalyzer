@@ -1,7 +1,8 @@
 #include "AnalysisFiberDirection.h"
-
+#include "Analysis.h"
 using namespace std;
 using namespace cv;
+
 
 AnalysisFiberDirection::AnalysisFiberDirection(ParametersUI& p) :params(p) {};
 
@@ -146,7 +147,7 @@ void AnalysisFiberDirection::getPCAoptThresholdedImage(Mat& img)
             {
                 Mat threshImg = subImg.clone();
 
-                help::thresh(threshImg, k, false);
+                Analysis::thresh(threshImg, k, 0,false);
                 vector<Point> points = getWhitePointsFromThresholdedImage(threshImg);
 
                 bool enoughPoints = true; // only one of the conditions from pointCloudPCA function is needed: at least X percent of area in white

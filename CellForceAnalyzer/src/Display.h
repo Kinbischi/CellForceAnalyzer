@@ -13,6 +13,7 @@ public:
     Display(ParametersUI&, dataContainer&, Analysis&, AnalysisFiberDirection&);
 
     int getImageToShow(cv::Mat&, std::string&, double&);
+    void blurImg(cv::Mat&, std::string&);
     cv::Mat thresholdImage(cv::Mat, std::string&);
     int prepareAnalysisToShow();
 

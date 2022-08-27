@@ -12,7 +12,7 @@ Display::Display(ParametersUI& p, dataContainer& d, Analysis& anal, AnalysisFibe
 
 int Display::getImageToShow(Mat& outImg, string& name, double& scale)
 {
-    if (data.arrayImages.empty()) { return 1; }
+    if (data.arrayImages.empty() && data.cellImages.empty() && data.removedCellImages.empty()) { return 1; }
 
     int imageNumber = params.showNumber;
     channelType channel = params.channel;
@@ -33,11 +33,11 @@ int Display::getImageToShow(Mat& outImg, string& name, double& scale)
         outImg = image.getChannel(channel);
         name = image.getName(channel);
     }
-    if (params.deletedCells)
+    if (params.removedCells)
     {
-        if (data.deletedCellImages.empty()) { return 3; }
+        if (data.removedCellImages.empty()) { return 3; }
         if (scale == -1) { scale = 4; }
-        image = data.deletedCellImages[imageNumber];
+        image = data.removedCellImages[imageNumber];
         outImg = image.getChannel(channel);
         name = image.getName(channel);
     }
@@ -56,19 +56,49 @@ int Display::getImageToShow(Mat& outImg, string& name, double& scale)
     return 0;
 }
 
+void Display::blurImg(Mat& img, string& name)
+{
+    if (params.blurWeak)
+    {
+        analysis.blurWeak(img);
+        name = name + "_blurredWeak";
+    }
+    else if (params.blurStrong)
+    {
+        analysis.blurStrong(img);
+        name = name + "_blurredStrong";
+    }
+}
+
+void fillHoles(Mat& img)
+{
+    vector<vector<Point> > contours;
+    cv::findContours(img, contours, RETR_CCOMP, CHAIN_APPROX_SIMPLE);
+
+    for (int i = 0; i < contours.size(); i++)
+    {
+        cv::drawContours(img, contours, i, 255 ,FILLED);
+    }
+}
+
 Mat Display::thresholdImage(Mat image, string& name)
 {
     switch (params.threshType)
     {
     case thresholdingType::manual:
 
-        help::thresh(image, params.manualThreshold);
+        Analysis::thresh(image, params.manualThreshold,0);
         name = name + "_threshManually" + to_string(params.manualThreshold);
         break;
 
     case thresholdingType::otsu:
-        help::thresh(image);
+        Analysis::thresh(image,0,0);
         name = name + "_threshOtsu";
+        if (params.suppressLowEigValRatioSquares)
+        {
+            fillHoles(image);
+        }
+        
         break;
 
     case thresholdingType::squarePCAoptimizedThresh:
@@ -92,6 +122,7 @@ int Display::prepareAnalysisToShow()
 
     if (image.channels() == 1)//this can only be executed for 1 channel images
     {
+        blurImg(image, name);
         Mat thresholdedImage = thresholdImage(image, name);
 
         if ((params.withAnalysis && params.dispType == displayType::thresholded) || (!params.withAnalysis && params.threshType != thresholdingType::None))

@@ -214,7 +214,7 @@ void Plotting::plotSomething(vector<double> x, vector<double> y, plotFeatureType
 int Plotting::getCellImageToPlot(Mat& outImg)
 {
     int imageNumber = params.showNumber;
-    channelType channel = params.channel;
+    channelType channel = channelType::actin;
     CustomImage image;
     
     if (params.singleCells)
@@ -223,10 +223,10 @@ int Plotting::getCellImageToPlot(Mat& outImg)
         image = data.cellImages[imageNumber];
         outImg = image.getChannel(channel);
     }
-    if (params.deletedCells)
+    if (params.removedCells)
     {
-        if (data.deletedCellImages.empty()) { return 3; }
-        image = data.deletedCellImages[imageNumber];
+        if (data.removedCellImages.empty()) { return 3; }
+        image = data.removedCellImages[imageNumber];
         outImg = image.getChannel(channel);
     }
 

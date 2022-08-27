@@ -18,8 +18,9 @@ namespace fs = std::filesystem;
 Preprocess::Preprocess(ParametersUI& p, dataContainer& d) :params(p), data(d) {};
 
 // if there is numbers in the start of the image => can happen that images are not loaded in the same order as in the windows folder
-void Preprocess::loadImages(vector<CustomImage>& images, string inpDir, vector<channelType> channelsOrder)
+void Preprocess::loadImages(string inpDir)
 {
+
     fs::path inPath = inpDir;
     vector<Mat> matImages;
     int i = 0;
@@ -29,37 +30,69 @@ void Preprocess::loadImages(vector<CustomImage>& images, string inpDir, vector<c
         Mat img = imread(imgPath, IMREAD_UNCHANGED);
         auto dep = img.depth(); //if 0 => 8bit image(uchar), if 2 => 16 bit image(ushort)
 
-        if (img.channels()==3) //if images are loaded as rgb images and the channel that we are interested is in only one of the rgb channels
+        auto chan = img.channels();
+
+        if (params.loadthreeChannels)
         {
             Mat bgr[3];
             split(img, bgr);
+            matImages.push_back(bgr[2]); //b
+            matImages.push_back(bgr[1]); //g
+            matImages.push_back(bgr[0]); //r
 
-            int maxNonZeros=0;
-            for (int i = 0; i < 3; i++)
-            {
-                Mat channel = bgr[i];
-                int nonZeroPixels = countNonZero(channel);
-                if (nonZeroPixels>maxNonZeros)
-                {
-                    maxNonZeros = nonZeroPixels;
-                    img = channel;
-                }
-            }
-        }
-        matImages.push_back(img);
-
-        if (i == channelsOrder.size() - 1)
-        {
-            //whenever all of the (e.g. 4) image channels have been loaded, a CustomImage is created
             string imgName = entry.path().filename().string();
-            CustomImage image(matImages, channelsOrder, imgName);
-
-            images.push_back(image);
-
-            i = -1;
+            CustomImage image(matImages, data.channels, imgName);
+            if (params.loadAsCells)
+            {
+                data.cellImages.push_back(image);
+            }
+            else
+            {
+                data.arrayImages.push_back(image);
+            }
             matImages.clear();
         }
-        i++;
+        else
+        {
+            if (img.channels()==3) //if images are loaded as rgb images and the channel that we are interested is in only one of the rgb channels
+            {
+                Mat bgr[3];
+                split(img, bgr);
+
+                int maxNonZeros=0;
+                for (int i = 0; i < 3; i++)
+                {
+                    Mat channel = bgr[i];
+                    int nonZeroPixels = countNonZero(channel);
+                    if (nonZeroPixels>maxNonZeros)
+                    {
+                        maxNonZeros = nonZeroPixels;
+                        img = channel;
+                    }
+                }
+            }
+            matImages.push_back(img);
+
+            if (i == data.channels.size() - 1)
+            {
+                //whenever all of the (e.g. 4) image channels have been loaded, a CustomImage is created
+                string imgName = entry.path().filename().string();
+                CustomImage image(matImages, data.channels, imgName);
+
+                if(params.loadAsCells)
+                {
+                    data.cellImages.push_back(image);
+                }
+                else 
+                {
+                    data.arrayImages.push_back(image);
+                }
+
+                i = -1;
+                matImages.clear();
+            }
+            i++;
+        }
     }
 }
 
@@ -205,23 +238,23 @@ Cell Preprocess::getAverageProperties(const vector<Cell> cells)
         summedNucleusRoundness += cell.nucleus_roundness;
 
         summedActinArea += cell.actin_area;
-        summedActinDensity += cell.actin_density;
+        summedActinDensity += cell.actin_avgIntensity;
         summedActinMaxLength += cell.actin_maxLength;
         actinPCAangles.push_back(cell.actin_mainAngle);
 
-        summedYapInNucleus += cell.yap_inNucleus;
-        summedActinFiberAlignment += cell.actin_fiberAlignment;
+        summedYapInNucleus += cell.yap_percentageInNucleus;
+        summedActinFiberAlignment += cell.actin_fiberAlignmentValue;
     }
 
     averageAllCells.nucleus_area = summedNucleusArea / cells.size();
     averageAllCells.nucleus_circularity = summedNucleusCircularity / cells.size();
     averageAllCells.nucleus_roundness = summedNucleusRoundness / cells.size();
     averageAllCells.actin_area = summedActinArea / cells.size();
-    averageAllCells.actin_density = summedActinDensity / cells.size();
+    averageAllCells.actin_avgIntensity = summedActinDensity / cells.size();
     averageAllCells.actin_maxLength = summedActinMaxLength / cells.size();
     if (!actinPCAangles.empty()) { averageAllCells.actin_mainAngle = static_cast<int>(findDataPointWithMostNeighbours(actinPCAangles, 10)); }
-    averageAllCells.yap_inNucleus = summedYapInNucleus / cells.size();
-    averageAllCells.actin_fiberAlignment = summedActinFiberAlignment / cells.size();
+    averageAllCells.yap_percentageInNucleus = summedYapInNucleus / cells.size();
+    averageAllCells.actin_fiberAlignmentValue = summedActinFiberAlignment / cells.size();
 
     return averageAllCells;
 }

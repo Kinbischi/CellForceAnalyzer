@@ -58,40 +58,6 @@ namespace help
         }
     }
 
-    bool thresh(Mat& img, int thresholdValue, bool scaleTheData)
-    {
-        if (img.channels()==3)
-        {
-            return false;
-        }
-
-        img = img.clone();
-        //scale images before every thresholding
-        if (scaleTheData)
-        {
-            scaleData(img);
-        }
-        
-        //convert to uint8 for threshold function 
-        if (img.depth()==CV_16U)
-        {
-            img.convertTo(img, CV_8U, 1 / 256.0);
-        }
-
-        if (thresholdValue!=0)
-        {
-            cv::threshold(img, img, thresholdValue, 255, THRESH_BINARY); //used in fiber pca => no smoothing
-        }
-        else
-        {
-            // smoothen image
-            int ksize = 5;
-            cv::GaussianBlur(img, img, Size(ksize, ksize), 0, 0);
-            auto thresholdValue = cv::threshold(img, img, 0, 255, THRESH_OTSU);
-        }
-        
-        return true;
-    }
 
     double average(vector<double> v)
     {

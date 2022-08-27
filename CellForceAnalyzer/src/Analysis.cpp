@@ -15,7 +15,66 @@
 using namespace std;
 using namespace cv;
 
-Analysis::Analysis(ParametersUI& parameters) :m_parameters(parameters) {}
+Analysis::Analysis(ParametersUI& p, AnalysisFiberDirection& af) :params(p), analysisFiberDir(af){}
+
+// smoothen image
+void Analysis::blurWeak(Mat& img)
+{
+    // kernel size must be an odd value
+    cv::GaussianBlur(img, img, Size(5, 5), 0, 0);
+}
+
+void Analysis::blurStrong(Mat& img)
+{
+    // kernel size must be an odd value
+    cv::GaussianBlur(img, img, Size(13, 13), 0, 0);
+    cv::GaussianBlur(img, img, Size(13, 13), 0, 0);
+    cv::blur(img, img, Size(5, 5));
+    cv::blur(img, img, Size(5, 5));
+}
+
+bool Analysis::thresh(Mat& img, int thresholdValue, int blurStrength, bool scaleTheData)
+{
+    if (img.channels() == 3)
+    {
+        return false;
+    }
+
+    img = img.clone();
+
+    //scale images before every thresholding
+    if (scaleTheData)
+    {
+        help::scaleData(img);
+    }
+
+    //blur
+    if (blurStrength == 1)
+    {
+        Analysis::blurWeak(img);
+    }
+    else if (blurStrength == 2)
+    {
+        Analysis::blurStrong(img);
+    }
+
+    //convert to uint8 for threshold function 
+    if (img.depth() == CV_16U)
+    {
+        img.convertTo(img, CV_8U, 1 / 256.0);
+    }
+
+    if (thresholdValue != 0)
+    {
+        cv::threshold(img, img, thresholdValue, 255, THRESH_BINARY); //used in fiber pca => no smoothing
+    }
+    else
+    {
+        auto thresholdValue = cv::threshold(img, img, 0, 255, THRESH_OTSU);
+    }
+
+    return true;
+}
 
 void getRadii(vector<Point> contour, Point centroid, vector<Point>& outPoints, double& innerRadius, double& outerRadius)
 {
@@ -143,24 +202,30 @@ double findFurthestDistance(vector<Point> contour, vector<Point>& furthestPoints
     return maxDistance;
 }
 
-double analyzePercentageInNucleus(Mat something, Mat nucleus)
+//TODO: double check that still works
+vector<double> analyzePercentageInNucleus(Mat something, Mat nucleus, Mat toDefineCellAreaThresh = cv::Mat())
 {
-    Mat somethingThresh = something;
-    Mat nucleusThresh = nucleus;
-    help::thresh(somethingThresh);
-    help::thresh(nucleusThresh);
+    if (toDefineCellAreaThresh.empty())
+    {
+        toDefineCellAreaThresh = something.clone();
+    }
 
-    int somethingInNucleusCount = 0;
-    int somethingOutsideNucleusCount = 0;
-    int somethingArea = 0;
+    Mat nucleusThresh = nucleus;
+    
+    Analysis::thresh(nucleusThresh);
+    Analysis::thresh(toDefineCellAreaThresh);
+
+    int nucleusArea = 0;
+    int notNucleusCellArea = 0;
+    int cellArea = 0;
     double somethingInNucleusIntensity = 0;
     double somethingOutsideNucleusIntensity = 0;
-    for (int i = 0; i < somethingThresh.rows; i++)
+    for (int i = 0; i < toDefineCellAreaThresh.rows; i++)
     {
-        for (int j = 0; j < somethingThresh.cols; j++)
+        for (int j = 0; j < toDefineCellAreaThresh.cols; j++)
         {
             uchar nThresh = nucleusThresh.at<uchar>(i, j);
-            uchar sThresh = somethingThresh.at<uchar>(i, j);
+            uchar cellAreaThresh = toDefineCellAreaThresh.at<uchar>(i, j);
 
             int sValue;
             if (something.depth() == CV_8U)
@@ -172,38 +237,42 @@ double analyzePercentageInNucleus(Mat something, Mat nucleus)
                 sValue = something.at<ushort>(i, j);
             }
 
-            if (sThresh == CustomImage::max8bit)
+            if (cellAreaThresh == CustomImage::max8bit)
             {
-                somethingArea++;
+                cellArea++;
                 if (nThresh == CustomImage::max8bit)
                 {
-                    somethingInNucleusCount++;
+                    nucleusArea++;
                     somethingInNucleusIntensity += sValue;
                 }
                 if (nThresh == 0)
                 {
-                    somethingOutsideNucleusCount++;
+                    notNucleusCellArea++;
                     somethingOutsideNucleusIntensity += sValue;
                 }
             }
         }
     }
 
+    double averageIntensityInNucleus = somethingInNucleusIntensity / nucleusArea;
+    double averageIntensityOutsideNucleus = somethingOutsideNucleusIntensity / notNucleusCellArea;
+
     //intensity based calculation
     double percentageIntensityInNucleus = somethingInNucleusIntensity / (somethingInNucleusIntensity + somethingOutsideNucleusIntensity);
     double percentageIntensityOutsideNucleus = somethingOutsideNucleusIntensity / (somethingInNucleusIntensity + somethingOutsideNucleusIntensity);
 
-    //pixel wise calculation
-    double percentageOfSomethingInNucleus = double(somethingInNucleusCount) / somethingArea;
-    double percentageOfSomethingOutsideNucleus = double(somethingOutsideNucleusCount) / somethingArea;
+    vector<double> result;
+    result.push_back(percentageIntensityInNucleus);
+    result.push_back(averageIntensityInNucleus);
+    result.push_back(averageIntensityOutsideNucleus);
 
-    return percentageIntensityInNucleus;
+    return result;
 }
 
 vector<double> analyseAreaAndDensity(Mat channel)
 {
     Mat channelThresh = channel;
-    help::thresh(channelThresh);
+    Analysis::thresh(channelThresh);
     int pixelSum = 0;
     int numberOfPixels = 0;
 
@@ -238,7 +307,7 @@ void Analysis::edgeDetectionCanny(Mat& image)
 {
     cv::blur(image, image, Size(3, 3));
     int kernel_size = 3;
-    cv::Canny(image, image, m_parameters.highThreshCanny / 2, m_parameters.highThreshCanny, kernel_size);
+    cv::Canny(image, image, params.highThreshCanny / 2, params.highThreshCanny, kernel_size);
 }
 
 void Analysis::focalAdhesiondetection(Mat& image)
@@ -247,8 +316,8 @@ void Analysis::focalAdhesiondetection(Mat& image)
     GaussianBlur(image, blurredImage, Size(9, 9), 2, 2);
 
     vector<Vec3f> circles;
-    HoughCircles(blurredImage, circles, HOUGH_GRADIENT, m_parameters.FAdp, m_parameters.FAminDist, 
-        m_parameters.highThreshCanny, m_parameters.FAminCircleConfidence, 0, 10);
+    HoughCircles(blurredImage, circles, HOUGH_GRADIENT, params.FAdp, params.FAminDist, 
+        params.highThreshCanny, params.FAminCircleConfidence, 0, 10);
 
     cvtColor(image, image, COLOR_GRAY2RGB);
 
@@ -262,18 +331,17 @@ void Analysis::focalAdhesiondetection(Mat& image)
 }
 
 
-
 // falls altered => cell info müsste als resultVector zurück gebeben
 //TODO introduced worked
 void Analysis::analyseActin(Cell& cell)
 {
     Mat actin = cell.m_actinChannel.clone();
     Mat actinThresh = actin;
-    help::thresh(actinThresh);
+    Analysis::thresh(actinThresh);
 
     vector<double> result = analyseAreaAndDensity(actin);
     cell.actin_area = result[0];
-    cell.actin_density = result[1];
+    cell.actin_avgIntensity = result[1];
 
     vector<vector<Point> > contours;
     cv::findContours(actinThresh, contours, RETR_LIST, CHAIN_APPROX_NONE);
@@ -286,65 +354,26 @@ void Analysis::analyseActin(Cell& cell)
     double maxLength = findFurthestDistance(longestContour, furthestPoints);
     cell.actin_maxLength = maxLength;
 
-    //vector<Point> points = getWhitePointsFromThresholdedImage(actinThresh);
-    //vector<Point2d> eigen_vecs(2);
-    //
-    //bool worked = pointCloudPCA(points, eigen_vecs); //TOCHANGE
-    //double mainAngle = getAngleFromVectors(eigen_vecs);
-    //cell.actin_mainAngle = mainAngle;
-    //
-    //vector<double> fiberAngles;
-    //Mat optThresholdedActin = actin.clone();
-    //getPCAoptThresholdedImage(optThresholdedActin);
-    //analyseWithPCA(actin, fiberAngles, optThresholdedActin); //changes pic!!
-    //cell.actin_fibreAnglesPCA = fiberAngles;
-    //
-    //double spacing;
-    //vector<double> x = Plotting::createX(fiberAngles,true);
-    //vector<int> yFiberAngles = Plotting::createY(fiberAngles,x);
-    //cell.actin_fiberAlignment = calculateFiberAlignmentConstant(yFiberAngles,3,1);
-}
-
-// function used for depiction in show image function, draws centroid, inner & outer radii,...
-// not very beautiful but does the job
-bool Analysis::analyseShape(Mat& img)
-{
-    Mat imgThresh = img;
-    bool successful = help::thresh(imgThresh);
-    if (!successful) { return false; }
-
-    vector<vector<Point> > contours;
-    cv::findContours(imgThresh, contours, RETR_LIST, CHAIN_APPROX_NONE);
-    if (contours.empty()) { return false; }
-    Point centroidLargest;
-    vector<Point> longestContour;
-    getContourAndCentroidOfLargestWhiteRegion(imgThresh, contours, longestContour, centroidLargest);
-
-    vector<Point> radiusPoints(2);
-    double innerRadius, outerRadius;
-    getRadii(longestContour, centroidLargest, radiusPoints, innerRadius, outerRadius);
-
-    vector<Point> furthestPoints;
-    findFurthestDistance(longestContour, furthestPoints);
+    //unnecessary
+    /*
+    vector<Point> points = getWhitePointsFromThresholdedImage(actinThresh);
+    vector<Point2d> eigen_vecs(2);
     
-    //vector<Point> points = getWhitePointsFromThresholdedImage(imgThresh);
-    //vector<Point2d> eigen_vecs(2);
-    //bool worked = pointCloudPCA(points, eigen_vecs); //TOCHANGE
-    //Point ctr = Point(img.cols / 2, img.rows / 2);
+    bool worked = analysisFiberDir.pointCloudPCA(points, eigen_vecs); //TOCHANGE
+    double mainAngle = getAngleFromVectors(eigen_vecs);
+    cell.actin_mainAngle = mainAngle;
+    */
 
-    help::scaleData(img);
-    if (img.depth() == CV_16U) { img.convertTo(img, CV_8U, 1 / 256.0); }
-    cv::cvtColor(img, img, COLOR_GRAY2RGB);
-
+    vector<double> fiberAngles;
+    Mat optThresholdedActin = actin.clone();
+    analysisFiberDir.getPCAoptThresholdedImage(optThresholdedActin);
+    analysisFiberDir.analyseWithPCA(actin, fiberAngles, optThresholdedActin); //changes pic!!
+    cell.actin_fibreAnglesPCA = fiberAngles;
     
-    //help::drawDoubleArrow(img, ctr, eigen_vecs, Scalar(0, 128, 255), img.cols);
-    cv::drawContours(img, contours, -1, Scalar(0, 255, 0));
-    cv::drawMarker(img, centroidLargest, Scalar(255, 0, 0), 0, 5);
-    cv::drawMarker(img, radiusPoints[0], Scalar(0, 0, 255), 0, 5);
-    cv::drawMarker(img, radiusPoints[1], Scalar(0, 0, 255), 0, 5);
-    cv::line(img, furthestPoints[0], furthestPoints[1], Scalar(255, 255, 0));
-
-    return true;
+    double spacing;
+    vector<double> x = Plotting::createX(fiberAngles,true);
+    vector<int> yFiberAngles = Plotting::createY(fiberAngles,x);
+    cell.actin_fiberAlignmentValue = analysisFiberDir.calculateFiberAlignmentConstant(yFiberAngles,3,1);
 }
 
 
@@ -354,7 +383,7 @@ bool Analysis::analyseShape(Mat& img)
 void analyseNucleus(Cell& cell)
 {
     Mat nucleusThresh = cell.m_nucleusChannel;
-    help::thresh(nucleusThresh);
+    Analysis::thresh(nucleusThresh);
 
     vector<vector<Point> > contours;
     cv::findContours(nucleusThresh, contours, RETR_LIST, CHAIN_APPROX_NONE);
@@ -381,10 +410,29 @@ void analyseNucleus(Cell& cell)
 
 void analyseYap(Cell& cell)
 {
-    double yapInNucleus = analyzePercentageInNucleus(cell.m_yapChannel, cell.m_nucleusChannel);
-    cell.yap_inNucleus = yapInNucleus;
+    vector<double> result = analyzePercentageInNucleus(cell.m_yapChannel, cell.m_nucleusChannel, cell.m_actinChannel);
+    cell.yap_percentageInNucleus = result[0];
 }
 
+void Analysis::analyseCell(Cell& cell, std::vector<channelType> channels)
+{
+    bool hasNucleus, hasActin, hasYap;
+    hasNucleus = std::count(channels.begin(), channels.end(), channelType::nucleus);
+    hasActin = std::count(channels.begin(), channels.end(), channelType::actin);
+    hasYap = std::count(channels.begin(), channels.end(), channelType::yap);
+    if (hasNucleus)
+    {
+        analyseNucleus(cell);
+    }
+    if (hasActin)
+    {
+        analyseActin(cell);
+    }
+    if (hasYap&&hasNucleus)
+    {
+        analyseYap(cell);
+    }
+}
 
 // TODO: wenn fixed (e.g.x20) => regulate nucleus size => between x and y pixels
 // actin detatched from nucleus?
@@ -393,7 +441,7 @@ bool Analysis::isDeadCell(Cell cell)
     // 1)
     // triggers if most of the actin lies within the nucleus
     // or nucleus is huge => perhaps 2 molten nucli together
-    double actinInNucleusPercentage = analyzePercentageInNucleus(cell.m_actinChannel, cell.m_nucleusChannel);
+    double actinInNucleusPercentage = analyzePercentageInNucleus(cell.m_actinChannel, cell.m_nucleusChannel)[0];
     if (actinInNucleusPercentage > 0.4)
     {
         return true;
@@ -415,7 +463,7 @@ bool Analysis::isDeadCell(Cell cell)
     // if thresholding of nucleus has multiple areas => multiple cells in niche or very very blurred nucleus
     // spots are with small area are not considered
     Mat nucleusThresh = cell.m_nucleusChannel;
-    help::thresh(nucleusThresh);
+    Analysis::thresh(nucleusThresh);
     Mat labels, stats, centroids;
     int nucleusParts = cv::connectedComponentsWithStats(nucleusThresh, labels, stats, centroids);
 
@@ -443,22 +491,109 @@ bool Analysis::isDeadCell(Cell cell)
     return false;
 }
 
-void Analysis::analyseCell(Cell& cell, std::vector<channelType> channels)
+vector<Point> getWhitePointsFromThresholdedImage2(Mat img)
 {
-    bool hasNucleus, hasActin, hasYap;
-    hasNucleus = std::count(channels.begin(), channels.end(), channelType::nucleus);
-    hasActin = std::count(channels.begin(), channels.end(), channelType::actin);
-    hasYap = std::count(channels.begin(), channels.end(), channelType::yap);
-    if (hasNucleus)
+    vector<Point> pointCloud;
+    for (int i = 0; i < img.rows; i++)
     {
-        analyseNucleus(cell);
+        for (int j = 0; j < img.cols; j++)
+        {
+            if (img.at<uchar>(i, j) == 255)
+            {
+                Point p = Point(j, i);
+                pointCloud.push_back(p);
+            }
+        }
     }
-    if (hasActin)
+    return pointCloud;
+}
+
+bool Analysis::pointCloudPCA2(const vector<Point>& pts, vector<Point2d>& eigen_vecs, shared_ptr<double> eigValRatio)
+{
+    int squareLength = params.PCAsquareLength;
+    double minEigVecRatio = params.PCAminEigValRatio;
+
+    if (pts.size() < help::minPercentagePointsPCA * squareLength * squareLength || pts.size() < help::minPointsPCA) // enough white pixels
     {
-        analyseActin(cell);
+        return false;
     }
-    if (hasYap&&hasNucleus)
+    // the pca analysis uses another input format for the data
+    Mat data_pts = Mat(pts.size(), 2, CV_64F);
+    for (int i = 0; i < data_pts.rows; i++)
     {
-        analyseYap(cell);
+        data_pts.at<double>(i, 0) = pts[i].x;
+        data_pts.at<double>(i, 1) = pts[i].y;
     }
+
+    //Perform PCA analysis
+    PCA pca_analysis(data_pts, Mat(), PCA::DATA_AS_ROW);
+    // center = Point(static_cast<int>(pca_analysis.mean.at<double>(0, 0)), static_cast<int>(pca_analysis.mean.at<double>(0, 1)));
+
+    //Store the eigenvalues and eigenvectors
+    vector<double> eigen_val(2);
+    for (int i = 0; i < 2; i++)
+    {
+        eigen_vecs[i] = Point2d(pca_analysis.eigenvectors.at<double>(i, 0), pca_analysis.eigenvectors.at<double>(i, 1));
+        eigen_val[i] = pca_analysis.eigenvalues.at<double>(i);
+    }
+
+    // for fiber analysis: analysis only worked if:
+    // - at least 10 percent of image need to be covered with fibers (white points)
+    // - in the analysis one principal component is clearly more dominant than the other => this can be seen via the eigenvalues
+    int subImgArea = squareLength * squareLength;
+    double ratio = eigen_val[0] / eigen_val[1];
+
+    if (eigValRatio != nullptr)
+    {
+        *eigValRatio = ratio;
+    }
+
+    if (ratio < minEigVecRatio)
+    {
+        return false;
+    }
+
+    return true;
+}
+
+// function used for depiction in show image function, draws centroid, inner & outer radii,...
+// not very beautiful but does the job
+bool Analysis::analyseShape(Mat& img)
+{
+    Mat imgThresh = img;
+    bool successful = Analysis::thresh(imgThresh);
+    if (!successful) { return false; }
+
+    vector<vector<Point> > contours;
+    cv::findContours(imgThresh, contours, RETR_LIST, CHAIN_APPROX_NONE);
+    if (contours.empty()) { return false; }
+    Point centroidLargest;
+    vector<Point> longestContour;
+    getContourAndCentroidOfLargestWhiteRegion(imgThresh, contours, longestContour, centroidLargest);
+
+    vector<Point> radiusPoints(2);
+    double innerRadius, outerRadius;
+    getRadii(longestContour, centroidLargest, radiusPoints, innerRadius, outerRadius);
+
+    vector<Point> furthestPoints;
+    findFurthestDistance(longestContour, furthestPoints);
+    
+    vector<Point> points = getWhitePointsFromThresholdedImage2(imgThresh);
+    vector<Point2d> eigen_vecs(2);
+    bool worked = pointCloudPCA2(points, eigen_vecs); //TOCHANGE
+    Point ctr = Point(img.cols / 2, img.rows / 2);
+
+    help::scaleData(img);
+    if (img.depth() == CV_16U) { img.convertTo(img, CV_8U, 1 / 256.0); }
+    cv::cvtColor(img, img, COLOR_GRAY2RGB);
+
+    
+    help::drawDoubleArrow(img, ctr, eigen_vecs, Scalar(0, 128, 255), img.cols);
+    //cv::drawContours(img, contours, -1, Scalar(0, 255, 0));
+    //cv::drawMarker(img, centroidLargest, Scalar(255, 0, 0), 0, 5);
+    //cv::drawMarker(img, radiusPoints[0], Scalar(0, 0, 255), 0, 5);
+    //cv::drawMarker(img, radiusPoints[1], Scalar(0, 0, 255), 0, 5);
+    //cv::line(img, furthestPoints[0], furthestPoints[1], Scalar(255, 255, 0));
+
+    return true;
 }

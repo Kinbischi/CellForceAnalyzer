@@ -24,6 +24,7 @@ public:
 private slots:
     void on_pushButton_channels_clicked();
     void on_pushButton_loadImages_clicked();
+    void on_pushButton_applyYolo_clicked();
     void on_pushButton_showImage_clicked();
     void on_pushButton_writeOut_clicked();
     void on_pushButton_showPlot_clicked();
@@ -34,7 +35,7 @@ private slots:
     void imageNumberChanged(int);
     void radioButtonArraysChanged(bool);
     void radioButtonCellsChanged(bool);
-    void radioButtonDeletedCellsChanged(bool);
+    void radioButtonRemovedCellsChanged(bool);
 
 
 private:
@@ -108,3 +109,13 @@ private:
 
 //todo => handle besser wann analysen erlaubt => nicht menr if ().size()>0 usw => bool analysisConducted in parameters zb, bool imagesLoaded
 //=> zb vor plotting funktion abfragen
+
+//TODO: remove bad cells implementation
+//check if image loading works as desired
+// better featback if eg channel not loaded or image type not available
+
+//TODO: try putting islands from optimally thresholded image into pca => not squares => then analysis gets more indep of squares
+
+//Leslie würde gern wissen: => unterschied in yap localization zwischen 5%,10% and coverslip
+
+// try blur detection of nuclei => single line of code: cv2.Laplacian(image, cv2.CV_64F).var()

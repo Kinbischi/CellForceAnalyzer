@@ -9,7 +9,7 @@ struct dataContainer
     std::vector<CustomImage> arrayImages;
     std::vector<cv::Mat> arrayImages_withYoloBoxes;
     std::vector<Cell> cellImages;
-    std::vector<Cell> deletedCellImages;
+    std::vector<Cell> removedCellImages;
 
     //Cell object with all the averages stored
     Cell averageAllCells;

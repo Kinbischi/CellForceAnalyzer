@@ -22,13 +22,13 @@ double Cell::getQuantity(plotFeatureType type)
         out = nucleus_roundness;
         break;
     case plotFeatureType::yapInNucleus:
-        out = yap_inNucleus;
+        out = yap_percentageInNucleus;
         break;
     case plotFeatureType::actArea:
         out = actin_area;
         break;
     case plotFeatureType::actDensity:
-        out = actin_density;
+        out = actin_avgIntensity;
         break;
     case plotFeatureType::actMaxLength:
         out = actin_maxLength;
