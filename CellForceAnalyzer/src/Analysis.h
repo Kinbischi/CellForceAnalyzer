@@ -14,13 +14,14 @@ public:
 	static void blurWeak(cv::Mat&);
 	static void blurStrong(cv::Mat&);
 	static bool thresh(cv::Mat&, int=0, int=2, bool=true);
+	static void fillHoles(cv::Mat&);
 
 	bool pointCloudPCA2(const std::vector<cv::Point>&, std::vector<cv::Point2d>&, std::shared_ptr<double> = nullptr);
 
 	void analyseCell(Cell&, std::vector<channelType>);
 
 	bool isDeadCell(Cell);
-	bool analyseShape(cv::Mat&);
+	bool analyseShape(cv::Mat&, cv::Mat);
 
 	void edgeDetectionCanny(cv::Mat&);
 	void focalAdhesiondetection(cv::Mat&);

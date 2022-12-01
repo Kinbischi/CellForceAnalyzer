@@ -188,6 +188,7 @@ Mat CustomImage::createRGBimage()
 	allChannels.push_back(imgGreen);
 	allChannels.push_back(imgRed);
 
+	//TODO: absturtz falls falsche stainings in 3 cell load
 	merge(allChannels, rgbImage);
 	//Mat channels[3] = { imgBlue, imgGreen,  imgRed};
 	//merge(channels, 3, rgbImage);

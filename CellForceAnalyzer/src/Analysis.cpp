@@ -42,7 +42,7 @@ bool Analysis::thresh(Mat& img, int thresholdValue, int blurStrength, bool scale
 
     img = img.clone();
 
-    //scale images before every thresholding
+    //scale images before thresholding
     if (scaleTheData)
     {
         help::scaleData(img);
@@ -51,11 +51,11 @@ bool Analysis::thresh(Mat& img, int thresholdValue, int blurStrength, bool scale
     //blur
     if (blurStrength == 1)
     {
-        Analysis::blurWeak(img);
+        blurWeak(img);
     }
     else if (blurStrength == 2)
     {
-        Analysis::blurStrong(img);
+        blurStrong(img);
     }
 
     //convert to uint8 for threshold function 
@@ -70,10 +70,21 @@ bool Analysis::thresh(Mat& img, int thresholdValue, int blurStrength, bool scale
     }
     else
     {
-        auto thresholdValue = cv::threshold(img, img, 0, 255, THRESH_OTSU);
+        thresholdValue = cv::threshold(img, img, 0, 255, THRESH_OTSU);
     }
 
     return true;
+}
+
+void Analysis::fillHoles(Mat& img)
+{
+    vector<vector<Point> > contours;
+    cv::findContours(img, contours, RETR_CCOMP, CHAIN_APPROX_SIMPLE);
+
+    for (int i = 0; i < contours.size(); i++)
+    {
+        cv::drawContours(img, contours, i, 255, FILLED);
+    }
 }
 
 void getRadii(vector<Point> contour, Point centroid, vector<Point>& outPoints, double& innerRadius, double& outerRadius)
@@ -178,6 +189,7 @@ void getContourAndCentroidOfLargestWhiteRegion(Mat img, vector<vector<Point> > c
 double findFurthestDistance(vector<Point> contour, vector<Point>& furthestPoints)
 {
     vector<Point> hullPoints;
+    //to make algorithm faster => reduction to relevant points by means of the convex hull algorithm
     cv::convexHull(contour, hullPoints);
 
     int start = 1;
@@ -214,6 +226,7 @@ vector<double> analyzePercentageInNucleus(Mat something, Mat nucleus, Mat toDefi
     
     Analysis::thresh(nucleusThresh);
     Analysis::thresh(toDefineCellAreaThresh);
+    Analysis::fillHoles(toDefineCellAreaThresh);
 
     int nucleusArea = 0;
     int notNucleusCellArea = 0;
@@ -269,10 +282,12 @@ vector<double> analyzePercentageInNucleus(Mat something, Mat nucleus, Mat toDefi
     return result;
 }
 
-vector<double> analyseAreaAndDensity(Mat channel)
+vector<double> analyseAreaAndIntensity(Mat channel)
 {
     Mat channelThresh = channel;
     Analysis::thresh(channelThresh);
+    Analysis::fillHoles(channelThresh);
+    
     int pixelSum = 0;
     int numberOfPixels = 0;
 
@@ -295,10 +310,10 @@ vector<double> analyseAreaAndDensity(Mat channel)
         }
     }
 
-    double actinDensity = double(pixelSum) / numberOfPixels;
+    double averageIntensity = double(pixelSum) / numberOfPixels;
     vector<double> result;
     result.push_back(numberOfPixels);
-    result.push_back(actinDensity);
+    result.push_back(averageIntensity);
     return result;
 }
 
@@ -337,9 +352,9 @@ void Analysis::analyseActin(Cell& cell)
 {
     Mat actin = cell.m_actinChannel.clone();
     Mat actinThresh = actin;
-    Analysis::thresh(actinThresh);
+    thresh(actinThresh);
 
-    vector<double> result = analyseAreaAndDensity(actin);
+    vector<double> result = analyseAreaAndIntensity(actin);
     cell.actin_area = result[0];
     cell.actin_avgIntensity = result[1];
 
@@ -403,15 +418,21 @@ void analyseNucleus(Cell& cell)
     getRadii(longestContour, centroidLargest, radiusPoints, innerRadius, outerRadius);
     double roundness = innerRadius / outerRadius;
 
+    vector<double> result = analyseAreaAndIntensity(cell.m_nucleusChannel);
+    cell.nucleus_area = result[0];
+    cell.nucleus_avgIntensity = result[1];
+
     cell.nucleus_circularity = circularity;
     cell.nucleus_roundness = roundness;
-    cell.nucleus_area = area;
+    
 }
 
 void analyseYap(Cell& cell)
 {
     vector<double> result = analyzePercentageInNucleus(cell.m_yapChannel, cell.m_nucleusChannel, cell.m_actinChannel);
     cell.yap_percentageInNucleus = result[0];
+    cell.yap_avgIntensityInNucleus = result[1];
+    cell.yap_avgIntensityOutsideNucleus = result[2];
 }
 
 void Analysis::analyseCell(Cell& cell, std::vector<channelType> channels)
@@ -448,11 +469,11 @@ bool Analysis::isDeadCell(Cell cell)
     }
     // actin area should be bigger than nucleus area
     vector<double> result;
-    result = analyseAreaAndDensity(cell.m_actinChannel);
+    result = analyseAreaAndIntensity(cell.m_actinChannel);
     double actin_area = result[0];
-    result = analyseAreaAndDensity(cell.m_nucleusChannel);
+    result = analyseAreaAndIntensity(cell.m_nucleusChannel);
     double nucleus_area = result[0];
-    auto hi = actin_area / nucleus_area;
+
     if (actin_area / nucleus_area < 2)
     {
         return true;
@@ -558,10 +579,15 @@ bool Analysis::pointCloudPCA2(const vector<Point>& pts, vector<Point2d>& eigen_v
 
 // function used for depiction in show image function, draws centroid, inner & outer radii,...
 // not very beautiful but does the job
-bool Analysis::analyseShape(Mat& img)
+// TODO: change that
+bool Analysis::analyseShape(Mat& img, Mat imgThresh)
 {
-    Mat imgThresh = img;
-    bool successful = Analysis::thresh(imgThresh);
+    bool successful;
+    if (imgThresh.empty()) 
+    {
+        Mat imgThresh = img;
+        successful = Analysis::thresh(imgThresh);
+    }
     if (!successful) { return false; }
 
     vector<vector<Point> > contours;
@@ -588,12 +614,12 @@ bool Analysis::analyseShape(Mat& img)
     cv::cvtColor(img, img, COLOR_GRAY2RGB);
 
     
-    help::drawDoubleArrow(img, ctr, eigen_vecs, Scalar(0, 128, 255), img.cols);
-    //cv::drawContours(img, contours, -1, Scalar(0, 255, 0));
+    //help::drawDoubleArrow(img, ctr, eigen_vecs, Scalar(0, 128, 255), img.cols);
+    cv::drawContours(img, contours, -1, Scalar(0, 255, 0),3);
     //cv::drawMarker(img, centroidLargest, Scalar(255, 0, 0), 0, 5);
     //cv::drawMarker(img, radiusPoints[0], Scalar(0, 0, 255), 0, 5);
     //cv::drawMarker(img, radiusPoints[1], Scalar(0, 0, 255), 0, 5);
-    //cv::line(img, furthestPoints[0], furthestPoints[1], Scalar(255, 255, 0));
+    cv::line(img, furthestPoints[0], furthestPoints[1], Scalar(255, 255, 0),3);
 
     return true;
 }

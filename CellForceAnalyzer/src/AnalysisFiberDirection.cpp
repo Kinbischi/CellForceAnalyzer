@@ -229,13 +229,13 @@ bool AnalysisFiberDirection::analyseWithPCA(Mat& img, vector<double>& resultingA
 
             vector<Point2d> eigen_vecs(2);
             bool PCAworked = pointCloudPCA(points, eigen_vecs); // TODO: all conditions?
-
+            
             if (PCAworked && enoughPoints)
             {
                 Point center = Point(edgeX + (i + 0.5) * lengthX, edgeY + (j + 0.5) * lengthY);
-                rectangle(img, rect, Scalar(0, 255, 128));
+                
                 help::drawDoubleArrow(img, center, eigen_vecs, Scalar(0, 128, 255), lengthX);
-
+                rectangle(img, rect, Scalar(0, 255, 128));
                 double angle = getAngleFromVectors(eigen_vecs);
                 resultingAngles.push_back(angle);
             }

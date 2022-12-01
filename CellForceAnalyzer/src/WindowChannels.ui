@@ -31,10 +31,10 @@
           <bool>false</bool>
          </property>
          <property name="currentText">
-          <string>Actin</string>
+          <string>Nucleus</string>
          </property>
          <property name="currentIndex">
-          <number>4</number>
+          <number>1</number>
          </property>
          <item>
           <property name="text">
@@ -85,10 +85,10 @@
           <bool>false</bool>
          </property>
          <property name="currentText">
-          <string>Vinculin</string>
+          <string>Brightfield</string>
          </property>
          <property name="currentIndex">
-          <number>2</number>
+          <number>0</number>
          </property>
          <item>
           <property name="text">
@@ -139,10 +139,10 @@
           <bool>false</bool>
          </property>
          <property name="currentText">
-          <string>Nucleus</string>
+          <string>Actin</string>
          </property>
          <property name="currentIndex">
-          <number>1</number>
+          <number>4</number>
          </property>
          <item>
           <property name="text">
@@ -193,10 +193,10 @@
           <bool>false</bool>
          </property>
          <property name="currentText">
-          <string>None</string>
+          <string>Vinculin</string>
          </property>
          <property name="currentIndex">
-          <number>5</number>
+          <number>2</number>
          </property>
          <item>
           <property name="text">
@@ -247,10 +247,10 @@
           <bool>false</bool>
          </property>
          <property name="currentText">
-          <string>None</string>
+          <string>YAP</string>
          </property>
          <property name="currentIndex">
-          <number>5</number>
+          <number>3</number>
          </property>
          <item>
           <property name="text">

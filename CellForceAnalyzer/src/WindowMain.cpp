@@ -70,7 +70,7 @@ void WindowMain::updateParameters()
 
     //thresholdinng parameters
     m_params.manualThreshold = ui.spinBox_thresholdManually->value();
-
+    m_params.fillHoles = ui.checkBox_fillHoles->isChecked();
     //PCA parameters
     m_params.PCAsquareLength = ui.spinBox_squareLengthPCA->value();
     m_params.PCAminEigValRatio = ui.doubleSpinBox_minEigValRatioPCA->value();
@@ -422,7 +422,7 @@ void WindowMain::on_pushButton_conductAnalysisOnAllCells_clicked()
 
 void WindowMain::on_pushButton_writeOut_clicked()
 {
-    if (m_data.arrayImages.empty())
+    if (m_data.cellImages.empty())
     {
         QMessageBox::information(this, "Good Morning", "Read in Images!?");
         return;
@@ -485,18 +485,20 @@ void WindowMain::writeAnalysedDataToFile()
     
     std::ofstream myfile(m_outpDir + filename);
 
-    myfile << ",Nucleus Area,Nucleus Circularity,Nucleus Roundness,Actin Area,Actin Density, Actin maxSpreadLength,Actin PCA direction,Yap in Nucleus" << "\n";
+    myfile << ",Nucleus:,Area,Average intensity,Circularity,Roundness,Actin:,Area,Average Intensity,Max spread length,Fiber alignment value,YAP:,Percentage in Nucleus,AvgIntensity in nucleus,AvgIntensity outside nucleus" << "\n";
 
     for (auto cell : m_data.cellImages)
     {
-        myfile << cell.m_name << "," << cell.nucleus_area << "," << cell.nucleus_circularity<< "," 
-            << cell.nucleus_roundness << "," << cell.actin_area << "," << cell.actin_avgIntensity << "," 
-            << cell.actin_maxLength << "," << cell.actin_mainAngle << "," << cell.yap_percentageInNucleus << "\n";
+        myfile << cell.m_name 
+            << ",," << cell.nucleus_area << "," << cell.nucleus_avgIntensity << "," << cell.nucleus_circularity << "," << cell.nucleus_roundness 
+            << ",," << cell.actin_area << "," << cell.actin_avgIntensity << "," << cell.actin_maxLength << "," << cell.actin_fiberAlignmentValue 
+            << ",," << cell.yap_percentageInNucleus << "," << cell.yap_avgIntensityInNucleus << "," << cell.yap_avgIntensityOutsideNucleus << "\n";
     }
     
-    myfile <<"Averages," << m_data.averageAllCells.nucleus_area << "," << m_data.averageAllCells.nucleus_circularity << "," 
-        << m_data.averageAllCells.nucleus_roundness << "," << m_data.averageAllCells.actin_area << "," << m_data.averageAllCells.actin_avgIntensity << "," 
-        << m_data.averageAllCells.actin_maxLength << "," << m_data.averageAllCells.actin_mainAngle << "," << m_data.averageAllCells.yap_percentageInNucleus;
+    myfile << "\n" <<"Averages"
+        << ",," << m_data.averageAllCells.nucleus_area << "," << m_data.averageAllCells.nucleus_avgIntensity << "," << m_data.averageAllCells.nucleus_circularity << "," << m_data.averageAllCells.nucleus_roundness
+        << ",," << m_data.averageAllCells.actin_area << "," << m_data.averageAllCells.actin_avgIntensity << "," << m_data.averageAllCells.actin_maxLength << "," << m_data.averageAllCells.actin_fiberAlignmentValue
+        << ",," << m_data.averageAllCells.yap_percentageInNucleus << "," << m_data.averageAllCells.yap_avgIntensityInNucleus << "," << m_data.averageAllCells.yap_avgIntensityOutsideNucleus;
 
 }
 

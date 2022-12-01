@@ -39,6 +39,7 @@ public:
 	bool blurWeak;
 	bool blurStrong;
 	// thresholding
+	bool fillHoles;
 	int manualThreshold;
 	// PCA
 	int PCAsquareLength;

@@ -86,7 +86,7 @@
             <string>3 stainings per image</string>
            </property>
            <property name="checked">
-            <bool>true</bool>
+            <bool>false</bool>
            </property>
           </widget>
          </item>
@@ -377,7 +377,7 @@
             </size>
            </property>
            <property name="currentText">
-            <string>Actin</string>
+            <string>Brightfield</string>
            </property>
            <item>
             <property name="text">
@@ -697,9 +697,9 @@
           </spacer>
          </item>
          <item>
-          <widget class="QLabel" name="label_12">
+          <widget class="QCheckBox" name="checkBox_fillHoles">
            <property name="text">
-            <string>Blurring:</string>
+            <string>Fill Holes</string>
            </property>
           </widget>
          </item>

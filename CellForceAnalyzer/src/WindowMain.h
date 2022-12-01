@@ -119,3 +119,5 @@ private:
 //Leslie würde gern wissen: => unterschied in yap localization zwischen 5%,10% and coverslip
 
 // try blur detection of nuclei => single line of code: cv2.Laplacian(image, cv2.CV_64F).var()
+
+//TODO update cell number after application of YOLO

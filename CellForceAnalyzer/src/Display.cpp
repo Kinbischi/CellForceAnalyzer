@@ -70,16 +70,6 @@ void Display::blurImg(Mat& img, string& name)
     }
 }
 
-void fillHoles(Mat& img)
-{
-    vector<vector<Point> > contours;
-    cv::findContours(img, contours, RETR_CCOMP, CHAIN_APPROX_SIMPLE);
-
-    for (int i = 0; i < contours.size(); i++)
-    {
-        cv::drawContours(img, contours, i, 255 ,FILLED);
-    }
-}
 
 Mat Display::thresholdImage(Mat image, string& name)
 {
@@ -89,16 +79,21 @@ Mat Display::thresholdImage(Mat image, string& name)
 
         Analysis::thresh(image, params.manualThreshold,0);
         name = name + "_threshManually" + to_string(params.manualThreshold);
+        if (params.fillHoles)
+        {
+            analysis.fillHoles(image);
+            name = name + "_filled";
+        }
         break;
 
     case thresholdingType::otsu:
         Analysis::thresh(image,0,0);
         name = name + "_threshOtsu";
-        if (params.suppressLowEigValRatioSquares)
+        if (params.fillHoles)
         {
-            fillHoles(image);
+            analysis.fillHoles(image);
+            name = name + "_filled";
         }
-        
         break;
 
     case thresholdingType::squarePCAoptimizedThresh:
@@ -134,7 +129,7 @@ int Display::prepareAnalysisToShow()
         bool analysisSuccessful = false;
         if (params.variousAnalysis)
         {
-            analysisSuccessful = analysis.analyseShape(image);
+            analysisSuccessful = analysis.analyseShape(image, thresholdedImage);
             name = name + "_roundAnalysed";
         }
         else if (params.fiberPCA)

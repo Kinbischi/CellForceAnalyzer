@@ -227,13 +227,15 @@ double findDataPointWithMostNeighbours(vector<double> input, double margin)
 
 Cell Preprocess::getAverageProperties(const vector<Cell> cells)
 {
-    double summedNucleusArea = 0, summedNucleusCircularity = 0, summedNucleusRoundness = 0, summedActinArea = 0, summedActinDensity = 0,
-        summedActinMaxLength = 0, summedYapInNucleus = 0, summedActinFiberAlignment = 0;
+    double summedNucleusArea = 0, summedNucleusIntensity = 0, summedNucleusCircularity = 0, summedNucleusRoundness = 0, 
+        summedActinArea = 0, summedActinDensity = 0, summedActinMaxLength = 0, summedActinFiberAlignment = 0, 
+        summedYapInNucleus = 0, summedIntensityInNucleus = 0, summedIntensityOutNucleus = 0;
     vector<double> actinPCAangles;
     Cell averageAllCells;
     for (auto cell : cells)
     {
         summedNucleusArea += cell.nucleus_area;
+        summedNucleusIntensity += cell.nucleus_avgIntensity;
         summedNucleusCircularity += cell.nucleus_circularity;
         summedNucleusRoundness += cell.nucleus_roundness;
 
@@ -241,21 +243,28 @@ Cell Preprocess::getAverageProperties(const vector<Cell> cells)
         summedActinDensity += cell.actin_avgIntensity;
         summedActinMaxLength += cell.actin_maxLength;
         actinPCAangles.push_back(cell.actin_mainAngle);
+        summedActinFiberAlignment += cell.actin_fiberAlignmentValue;
 
         summedYapInNucleus += cell.yap_percentageInNucleus;
-        summedActinFiberAlignment += cell.actin_fiberAlignmentValue;
+        summedIntensityInNucleus += cell.yap_avgIntensityInNucleus;
+        summedIntensityOutNucleus += cell.yap_avgIntensityOutsideNucleus;
+        
     }
 
     averageAllCells.nucleus_area = summedNucleusArea / cells.size();
+    averageAllCells.nucleus_avgIntensity = summedNucleusIntensity / cells.size();
     averageAllCells.nucleus_circularity = summedNucleusCircularity / cells.size();
     averageAllCells.nucleus_roundness = summedNucleusRoundness / cells.size();
+
     averageAllCells.actin_area = summedActinArea / cells.size();
     averageAllCells.actin_avgIntensity = summedActinDensity / cells.size();
     averageAllCells.actin_maxLength = summedActinMaxLength / cells.size();
     if (!actinPCAangles.empty()) { averageAllCells.actin_mainAngle = static_cast<int>(findDataPointWithMostNeighbours(actinPCAangles, 10)); }
-    averageAllCells.yap_percentageInNucleus = summedYapInNucleus / cells.size();
     averageAllCells.actin_fiberAlignmentValue = summedActinFiberAlignment / cells.size();
 
+    averageAllCells.yap_percentageInNucleus = summedYapInNucleus / cells.size();
+    averageAllCells.yap_avgIntensityInNucleus = summedIntensityInNucleus / cells.size();
+    averageAllCells.yap_avgIntensityOutsideNucleus = summedIntensityOutNucleus / cells.size();
     return averageAllCells;
 }
 
