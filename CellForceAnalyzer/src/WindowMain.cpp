@@ -185,7 +185,6 @@ void WindowMain::updateGeneralAnalysisTable()
     ui.tableWidget_all->setItem(11, 0, newItem);
 }
 
-
 void WindowMain::on_pushButton_channels_clicked()
 {
     WindowChannels channelsWindow;
@@ -196,7 +195,6 @@ void WindowMain::on_pushButton_channels_clicked()
         m_data.channels = channelsWindow.set_ChannelTypes();
     }
 }
-
 
 void WindowMain::on_pushButton_test_clicked()
 {
